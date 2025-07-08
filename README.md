@@ -1,4 +1,3 @@
-
 # Dashboard Climate Change R
 
 ## Sekilas tentang Proyek ini
@@ -39,6 +38,6 @@ Anda bisa melakukan perluasan dari dataset yang kami gunakan pada tautan diatas,
 - [Dinda Putri Nur Wulandari](https://www.github.com/octokatherine)
 - [Muhammad Hamlul Khair](ss)
 - [Qurany Nadhira Tsabita](ss)
-- [T.M. Al-Asy'ari Al-Muchtari](ss)
+- [T.M. Al-Asy'ari Al-Muchtari](https://github.com/SeraphimeZelel)
 - [Wahyu Nugraha Raomi Gading](ss)
 
