@@ -13,7 +13,7 @@ Dashboard ini hadir untuk menjawab kebutuhan tersebut, menyajikan data korban be
 
 ## Cara Memakai
 
-[Dashboard dapat diakses secara online (saat ini belum dideploy)](linkproject)
+[Dashboard dapat diakses secara online](https://asyarimuchtari.shinyapps.io/Dashboard_Climate_Change)
 
 Atau anda bisa menjalankan nya sendiri jika memiliki R. Untuk dapat menjalankan dashboard ini terdapat beberapa library yang harus diinstall.
 
@@ -35,7 +35,7 @@ Anda bisa melakukan perluasan dari dataset yang kami gunakan pada tautan diatas,
 
 ## Authors
 
-- [Dinda Putri Nur Wulandari](https://www.github.com/octokatherine)
+- [Dinda Putri Nur Wulandari](ss)
 - [Muhammad Hamlul Khair](ss)
 - [Qurany Nadhira Tsabita](ss)
 - [T.M. Al-Asy'ari Al-Muchtari](https://github.com/SeraphimeZelel)
