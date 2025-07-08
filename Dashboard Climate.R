@@ -13,8 +13,8 @@ library(leaflet)
 library(car)
 library(lmtest)
 
-data_dashboard <-  read_excel("C:/Users/Asyari/Documents/STIS/Tingkat 2/Semester 4/Komputasi Statistik/RShiny/datakomstat.xlsx")
-peta_indonesia <- st_read("C:/Users/Asyari/Documents/STIS/Tingkat 2/Semester 4/Komputasi Statistik/RShiny/38 Provinsi Indonesia - Provinsi.json")
+data_dashboard <-  read_excel("datadashboard.xlsx")
+peta_indonesia <- st_read("38 Provinsi Indonesia - Provinsi.json")
 
 variabel_iklim <- c("Suhu Rata-Rata" = "suhu_rata2",
                     "Curah Hujan" = "curah_hujan",
