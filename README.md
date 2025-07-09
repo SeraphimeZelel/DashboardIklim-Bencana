@@ -18,7 +18,7 @@ Dashboard ini hadir untuk menjawab kebutuhan tersebut, menyajikan data korban be
 Atau anda bisa menjalankan nya sendiri jika memiliki R. Untuk dapat menjalankan dashboard ini terdapat beberapa library yang harus diinstall.
 
 ```r
-install.packages(c("shiny","bs4dash","readxl","dplyr","DT","plotly","GGally","ggplot2","broom","tidyverse","sf","leaflet","car","lmtest"))
+install.packages(c("shiny","bs4dash","readxl","dplyr","DT","plotly","GGally","ggplot2","broom","tidyverse","sf","leaflet","car","lmtest","here"))
 ```
 
 lalu jalankan Dashboard Climate.R
@@ -35,9 +35,9 @@ Anda bisa melakukan perluasan dari dataset yang kami gunakan pada tautan diatas,
 
 ## Authors
 
-- [Dinda Putri Nur Wulandari](ss)
-- [Muhammad Hamlul Khair](ss)
-- [Qurany Nadhira Tsabita](ss)
+- [Dinda Putri Nur Wulandari](https://github.com/dindapnw)
+- [Muhammad Hamlul Khair](https://github.com/hamlulkhair)
+- [Qurany Nadhira Tsabita](https://github.com/lazydoughnut)
 - [T.M. Al-Asy'ari Al-Muchtari](https://github.com/SeraphimeZelel)
-- [Wahyu Nugraha Raomi Gading](ss)
+- [Wahyu Nugraha Raomi Gading](https://github.com/wahyugading)
 
