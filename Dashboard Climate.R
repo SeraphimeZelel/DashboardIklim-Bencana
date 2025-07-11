@@ -13,9 +13,11 @@ library(leaflet)
 library(car)
 library(lmtest)
 library(here)
-library (stringr)
+library(stringr)
+library(forecast)
+library(scales)
 
-data_dashboard <-  read_excel("data_dashboard.xlsx")
+data_dashboard <-  read_excel("Dashboard Data.xlsx")
 peta_indonesia_38provinsi <- st_read("38 Provinsi Indonesia - Provinsi.json")
 peta_indonesia_37provinsi <- st_read("37 Provinsi Indonesia - Provinsi.geojson")
 peta_indonesia_34provinsi <- st_read("34 Provinsi Indonesia - Provinsi.geojson")
@@ -260,13 +262,15 @@ ui <- dashboardPage(
             sep = ""
           )
         ) 
-      ),
+      ), 
+      
       
       fluidRow(
         infoBoxOutput("suhu_box", width = 4),
         infoBoxOutput("Total_Korban_box", width = 4),
         infoBoxOutput("jumlah_bencana_box", width = 4)
       ),
+      
       
       fluidRow(
         box(
@@ -291,6 +295,7 @@ ui <- dashboardPage(
           status = "gray",
           solidHeader = TRUE,
           width = 6,
+          height = "525px",
           selectInput(
             inputId = "variabel_iklim",
             label = "Pilih Variabel Iklim : ",
@@ -304,8 +309,28 @@ ui <- dashboardPage(
           status = "primary",
           solidHeader = TRUE,
           width = 6,
-          plotlyOutput("top_bencana_plot")
+          height = "525px",
+          plotlyOutput("top_bencana_plot", height = "450px")
         )
+      ),
+      
+      fluidRow(
+        box(
+          title = "Proporsi Sebaran Kejadian Bencana Alam",
+          status = "success",
+          solidHeader = TRUE,
+          width = 6,
+          height = "500px",
+          plotlyOutput("pie_bencana_plot",height = "450px")
+        ),
+        box(
+          title = "Proporsi Sebaran Korban Bencana Alam",
+          status = "success",
+          solidHeader = TRUE,
+          width = 6,
+          height = "500px",
+          plotlyOutput("pie_korban_plot",height = "450px")
+        ),
       )
     ),
     
@@ -461,33 +486,138 @@ ui <- dashboardPage(
     tabItem(
       tabName = "analisis-regresi",
       fluidRow(
-        box(
-          width = 4, status = "primary", solidHeader = TRUE,
-          title = "Pilih Variabel",
-          selectInput(
-            inputId  = "dep_var",
-            label    = "Variabel Dependen (Y):",
-            choices  = setNames(numeric_vars[c(-2,-9:-13)], format_label(numeric_vars)[c(-2,-9:-13)]),
-            selected = ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])
+        column(
+          width = 4,
+          box(
+            width = NULL, height = "125px", status = "primary", solidHeader = TRUE,
+            title = "Pilih Provinsi",
+            selectInput(
+              inputId  = "prov_var",
+              label    = "Provinsi:",
+              choices = c(unique(data_dashboard$provinsi)),
+              selected = "Aceh",
+            )
           ),
-          selectizeInput(
-            inputId  = "indep_vars",
-            label    = "Variabel Independen (X):",
-            choices  = setNames(setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])),
-                                format_label(setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])))),
-            selected = setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1]))[1:3],
-            multiple = TRUE,
-            options  = list(
-              plugins = list("remove_button"),   # ada tombol x di tiap tag
-              maxItems = NULL,                   # tak dibatasi jumlah
-              dropdownMaxHeight = "300px"        # tinggi dropdown; scroll bar bisa di‑drag
+          box(
+            width = NULL, height = "210px", status = "primary", solidHeader = TRUE,
+            title = "Pilih Variabel",
+            selectInput(
+              inputId  = "dep_var",
+              label    = "Variabel Dependen (Y):",
+              choices  = setNames(numeric_vars[c(-2,-9:-13)], format_label(numeric_vars)[c(-2,-9:-13)]),
+              selected = ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])
+            ),
+            selectizeInput(
+              inputId  = "indep_vars",
+              label    = "Variabel Independen (X):",
+              choices  = setNames(setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])),
+                                  format_label(setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])))),
+              selected = setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1]))[1:3],
+              multiple = TRUE,
+              options  = list(
+                plugins = list("remove_button"),
+                maxItems = NULL,
+                dropdownMaxHeight = "300px"
+              )
+            )
+          ),
+          
+          # Box untuk Transformasi Variabel
+          box(
+            width = NULL, status = "warning", solidHeader = TRUE,
+            title = "Transformasi Variabel",
+            
+            # Transformasi Y (Variabel Dependen)
+            h5("Transformasi (Y) : ", style = "color: #d9534f; font-weight: bold;"),
+            br(),
+            radioButtons(
+              inputId = "trans_dep",
+              label = NULL,
+              choices = list(
+                "Tanpa Transformasi" = "none",
+                "Logaritma Natural (ln)" = "log",
+                "Logaritma 10 (log10)" = "log10",
+                "Akar Kuadrat (sqrt)" = "sqrt",
+                "Kuadrat (x²)" = "square",
+                "Kubik (x³)" = "cubic",
+                "Reciprocal (1/x)" = "reciprocal",
+                "Box-Cox" = "boxcox",
+                "Yeo-Johnson" = "yeojohnson",
+                "Inverse Hyperbolic Sine" = "asinh",
+                "Logit" = "logit",
+                "Probit" = "probit"
+              ),
+              selected = "none",
+              inline = FALSE
+            ),
+            
+            br(),
+            
+            # Transformasi X (Variabel Independen)
+            h5("Transformasi (X) : ", style = "color: #5bc0de; font-weight: bold;"),
+            br(),
+            radioButtons(
+              inputId = "trans_indep",
+              label = NULL,
+              choices = list(
+                "Tanpa Transformasi" = "none",
+                "Logaritma Natural (ln)" = "log",
+                "Logaritma 10 (log10)" = "log10",
+                "Akar Kuadrat (sqrt)" = "sqrt",
+                "Kuadrat (x²)" = "square",
+                "Kubik (x³)" = "cubic",
+                "Reciprocal (1/x)" = "reciprocal",
+                "Box-Cox" = "boxcox",
+                "Yeo-Johnson" = "yeojohnson",
+                "Inverse Hyperbolic Sine" = "asinh",
+                "Standardisasi (z-score)" = "scale",
+                "Min-Max Normalisasi" = "minmax"
+              ),
+              selected = "none",
+              inline = FALSE
+            ),
+            
+            br(),
+            
+            # Tombol untuk reset transformasi
+            actionButton(
+              inputId = "reset_transform",
+              label = "Reset Transformasi",
+              icon = icon("refresh"),
+              class = "btn-warning",
+              style = "width: 100%;"
+            ),
+            
+            br(), br(),
+            
+            # Informasi tambahan
+            div(
+              style = "background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 12px;",
+              HTML("<strong>Tips:</strong><br/>
+               • Transformasi variabel dapat dilakukan untuk menemukan model yang cocok serta memenuhi asumsi<br/>
+               • Gunakan <strong>Box-Cox/Yeo-Johnson</strong> untuk normalitas<br/>
+               • Gunakan <strong>reciprocal</strong> untuk hubungan non-linear<br/>
+               • Gunakan <strong>standardisasi</strong> jika skala X berbeda jauh")
             )
           )
         ),
-        box(
-          width = 8, status = "info", solidHeader = TRUE,
-          title = "Ringkasan Model Regresi",
-          verbatimTextOutput("model_summary")
+        
+        column(
+          width = 8,
+          box(
+            width = NULL, status = "info", solidHeader = TRUE,
+            title = "Ringkasan Model Regresi",
+            verbatimTextOutput("model_summary")
+          ),
+          
+          box(
+            width = NULL, status = "success", solidHeader = TRUE,
+            title = "Statistik Deskriptif",
+            tagList(
+              verbatimTextOutput("descriptive_stats"),
+              verbatimTextOutput("inter_descriptive_stats")
+            )
+          )
         )
       ),
       
@@ -501,9 +631,44 @@ ui <- dashboardPage(
       
       fluidRow(
         box(
-          width = 12, status = "info", solidHeader = TRUE,
-          title = "Pemeriksaan Asumsi Regresi",
-          verbatimTextOutput("asumption")
+          width = 12, status = "danger", solidHeader = TRUE,
+          title = "Ringkasan Pemeriksaan Uji Model Regresi",
+          verbatimTextOutput("overall_check")
+        )
+      ),
+      
+      fluidRow(
+        # Row 1: Homoskedastisitas dan Normalitas
+        column(6,
+               box(
+                 width = NULL, status = "danger", solidHeader = TRUE,
+                 title = "Uji Homoskedastisitas",
+                 verbatimTextOutput("assumption1")
+               )
+        ),
+        column(6,
+               box(
+                 width = NULL, status = "danger", solidHeader = TRUE,
+                 title = "Uji Normalitas Residual",
+                 verbatimTextOutput("assumption2")
+               )
+        )
+      ),
+      fluidRow(
+        # Row 2: Multikolinearitas dan Autokorelasi
+        column(6,
+               box(
+                 width = NULL, status = "danger", solidHeader = TRUE,
+                 title = "Uji Multikolinearitas",
+                 verbatimTextOutput("assumption3")
+               )
+        ),
+        column(6,
+               box(
+                 width = NULL, status = "danger", solidHeader = TRUE,
+                 title = "Uji Autokorelasi",
+                 verbatimTextOutput("assumption4")
+               )
         )
       )
     ),
@@ -824,6 +989,94 @@ ui <- dashboardPage(
 
 server <- function(input, output,session){
   
+  # Piechart
+  output$pie_korban_plot <- renderPlotly({
+    
+    plot_data <- provinsi_filter() %>%
+      select(
+        korban_Banjir,
+        korban_Cuaca_ekstrem,
+        korban_Gelombang_pasang_Abrasi,
+        korban_Kebakaran_hutan_dan_lahan,
+        korban_Kekeringan,
+        korban_Longsor
+      ) %>%
+      summarise(across(everything(), ~sum(.x, na.rm = TRUE))) %>%
+      pivot_longer(
+        cols = everything(),
+        names_to = "Jenis_Bencana",
+        values_to = "Jumlah_Korban"
+      ) %>%
+      mutate(
+        Jenis_Bencana = str_replace(Jenis_Bencana, "^korban_", ""),
+        Jenis_Bencana = str_replace_all(Jenis_Bencana, "_", " "),
+        Jenis_Bencana = str_to_title(Jenis_Bencana)
+      ) %>%
+      arrange(desc(Jumlah_Korban))
+    
+    if (nrow(plot_data) == 0 || sum(plot_data$Jumlah_Korban) == 0) {
+      return(
+        plot_ly() %>%
+          layout(
+            title = "Tidak ada data korban jiwa untuk ditampilkan",
+            xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+            yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
+          )
+      )
+    }
+    
+    plot_ly(
+      data = plot_data,
+      labels = ~Jenis_Bencana,
+      values = ~Jumlah_Korban,
+      type = "pie",
+      textinfo = "label+percent",
+      insidetextorientation = "radial",
+      hovertemplate = '%{label}<br>Jumlah Korban: %{value:,}<extra></extra>'
+    ) %>%
+      layout(
+        title = "Proporsi Korban Jiwa Berdasarkan Jenis Bencana"
+      )
+  })
+  
+  #PIE JUMLAH BENCANA
+  output$pie_bencana_plot <- renderPlotly({
+    
+    plot_data <- provinsi_filter() %>%
+      select(Banjir, `Cuaca ekstrem`, `Gelombang pasang / Abrasi`, `Kebakaran hutan dan lahan`, Kekeringan, Longsor) %>%
+      summarise_all(sum, na.rm = TRUE) %>%
+      pivot_longer(
+        cols = everything(),
+        names_to = "Jenis_Bencana",
+        values_to = "Total_Kejadian"
+      ) %>%
+      arrange(desc(Total_Kejadian))
+    
+    if (nrow(plot_data) == 0 || sum(plot_data$Total_Kejadian) == 0) {
+      return(
+        plot_ly() %>%
+          layout(
+            title = "Tidak ada data kejadian untuk ditampilkan pada pilihan ini",
+            xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+            yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE)
+          )
+      )
+    }
+    
+    plot_ly(
+      data = plot_data,
+      labels = ~Jenis_Bencana,
+      values = ~Total_Kejadian,
+      type = "pie",
+      textinfo = "label+percent",
+      insidetextorientation = "radial",
+      hovertemplate = '%{label}<br>Jumlah Kejadian: %{value:,}<extra></extra>'
+    ) %>%
+      layout(
+        title = "Proporsi Jenis Bencana Berdasarkan Jumlah Kejadian"
+      )
+  })
+  
   # Output Dashboard Provinsi
   
   ## Filter Data Reaktif untuk Dashboard Provinsi
@@ -1109,7 +1362,7 @@ server <- function(input, output,session){
         xaxis = list(title = "Tahun", dtick = 1),
         yaxis = list(title = "Jumlah Korban Jiwa", range = c(min_y,max_y))
       ) %>% 
-    config(displayModeBar = FALSE)
+      config(displayModeBar = FALSE)
   })
   
   ## Tren Kejadian Bencana Spesifik
@@ -1158,7 +1411,7 @@ server <- function(input, output,session){
       plotlyOutput("top_provinsi_plot", height = "500px") 
     )
   })
-
+  
   output$top_provinsi_plot <- renderPlotly({
     
     plot_data <- bencana_filter() %>%
@@ -1359,8 +1612,6 @@ server <- function(input, output,session){
   })
   
   # Output Analisis
-  
-  
   ## Scatter-Matrix
   
   output$scatterplot <- renderPlot({
@@ -1384,10 +1635,81 @@ server <- function(input, output,session){
     datatable(cor_mat, options = list(dom = "t", scrollX = TRUE))
   })
   
-  ## Regresi
+  # Regresi dengan Filter Provinsi
+  # Fungsi helper untuk transformasi
+  apply_transformation <- function(x, trans_type, lambda = NULL) {
+    switch(trans_type,
+           "none" = x,
+           "log" = {
+             # Pastikan tidak ada nilai <= 0
+             if (any(x <= 0, na.rm = TRUE)) {
+               log(x + abs(min(x, na.rm = TRUE)) + 1)
+             } else {
+               log(x)
+             }
+           },
+           "log10" = {
+             if (any(x <= 0, na.rm = TRUE)) {
+               log10(x + abs(min(x, na.rm = TRUE)) + 1)
+             } else {
+               log10(x)
+             }
+           },
+           "sqrt" = {
+             if (any(x < 0, na.rm = TRUE)) {
+               sqrt(x + abs(min(x, na.rm = TRUE)))
+             } else {
+               sqrt(x)
+             }
+           },
+           "square" = x^2,
+           "cubic" = x^3,
+           "reciprocal" = {
+             ifelse(x == 0, NA, 1/x)
+           },
+           "boxcox" = {
+             if (is.null(lambda)) {
+               # Otomatis hitung lambda optimal
+               if (any(x <= 0, na.rm = TRUE)) {
+                 x_shifted <- x + abs(min(x, na.rm = TRUE)) + 1
+               } else {
+                 x_shifted <- x
+               }
+               tryCatch({
+                 lambda <- BoxCox.lambda(x_shifted, method = "guerrero")
+                 if (lambda == 0) log(x_shifted) else (x_shifted^lambda - 1) / lambda
+               }, error = function(e) x)
+             } else {
+               if (lambda == 0) log(x) else (x^lambda - 1) / lambda
+             }
+           },
+           "yeojohnson" = {
+             # Implementasi Yeo-Johnson transformation
+             tryCatch({
+               lambda <- 0  # bisa disesuaikan
+               ifelse(x >= 0,
+                      ifelse(lambda == 0, log(x + 1), ((x + 1)^lambda - 1) / lambda),
+                      ifelse(lambda == 2, -log(-x + 1), -((-x + 1)^(2-lambda) - 1) / (2 - lambda)))
+             }, error = function(e) x)
+           },
+           "asinh" = asinh(x),
+           "logit" = {
+             # Untuk proporsi (0,1), jika diluar range akan direscale
+             x_rescaled <- rescale(x, to = c(0.001, 0.999))
+             log(x_rescaled / (1 - x_rescaled))
+           },
+           "probit" = {
+             x_rescaled <- rescale(x, to = c(0.001, 0.999))
+             qnorm(x_rescaled)
+           },
+           "scale" = as.numeric(scale(x)),
+           "minmax" = rescale(x, to = c(0, 1)),
+           x  # default return original
+    )
+  }
   
-  ### Default X untuk masing-masing Y
-  
+  # Regresi
+  # Default X untuk masing-masing Y
   default_x_map <- list(
     "Total_Kejadian" = c("suhu_rata2", "curah_hujan", "kelembaban", "kecepatan_angin", "tekanan_udara"),
     "Banjir" = c("curah_hujan"),
@@ -1397,6 +1719,12 @@ server <- function(input, output,session){
     "Kekeringan" = c("curah_hujan", "suhu_rata2"),
     "Longsor" = c("curah_hujan", "kelembaban")
   )
+  
+  # Observer untuk reset transformasi
+  observeEvent(input$reset_transform, {
+    updateRadioButtons(session, "trans_dep", selected = "none")
+    updateRadioButtons(session, "trans_indep", selected = "none")
+  })
   
   observe({
     dep <- input$dep_var
@@ -1416,9 +1744,11 @@ server <- function(input, output,session){
     pilihan <- setdiff(numeric_vars, dep)
     pilihan_formatted <- format_label(pilihan)
     
+    # Gunakan default dari map jika tersedia
     default_x <- default_x_map[[dep]]
     default_x <- default_x[default_x %in% pilihan]
     
+    # Jika tidak ada default, ambil 3 pertama dari sisa variabel
     if (is.null(default_x) || length(default_x) == 0) {
       default_x <- pilihan[1:min(3, length(pilihan))]
     }
@@ -1429,19 +1759,207 @@ server <- function(input, output,session){
     )
   }, ignoreInit = TRUE)
   
+  # Model fit dengan transformasi
   model_fit <- reactive({
-    req(input$dep_var, input$indep_vars)
+    req(input$dep_var, input$indep_vars, input$prov_var)
     validate(need(length(input$indep_vars) >= 1, "Pilih minimal 1 variabel independen."))
     
-    dep_bt   <- paste0("`", input$dep_var, "`")
-    indep_bt <- paste0("`", input$indep_vars, "`")
+    # Filter data
+    if (input$prov_var == "Indonesia") {
+      data_filtered <- data_dashboard
+    } else {
+      data_dashboard[is.na(data_dashboard)] <-  0 
+      data_filtered <- data_dashboard[data_dashboard$provinsi == input$prov_var, ]
+    }
     
-    formula_str <- paste(dep_bt, "~", paste(indep_bt, collapse = " + "))
-    lm(as.formula(formula_str), data = data_dashboard)
+    validate(need(nrow(data_filtered) > 0, 
+                  paste("Tidak ada data untuk provinsi:", input$prov_var)))
+    
+    validate(need(nrow(data_filtered) > length(input$indep_vars), 
+                  "Jumlah observasi tidak mencukupi untuk analisis regresi"))
+    
+    # Siapkan data untuk transformasi
+    data_model <- data_filtered[, c(input$dep_var, input$indep_vars), drop = FALSE]
+    
+    # Transformasi Y
+    y_transformed <- apply_transformation(data_model[[input$dep_var]], input$trans_dep)
+    
+    # Transformasi X
+    x_transformed <- data_model[, input$indep_vars, drop = FALSE]
+    for (i in 1:ncol(x_transformed)) {
+      x_transformed[[i]] <- apply_transformation(x_transformed[[i]], input$trans_indep)
+    }
+    
+    # Gabungkan data
+    data_final <- data.frame(
+      y = y_transformed,
+      x_transformed
+    )
+    
+    # Buat formula
+    formula_str <- paste("y ~", paste(colnames(x_transformed), collapse = " + "))
+    
+    # Jalankan model
+    tryCatch({
+      lm(as.formula(formula_str), data = data_final)
+    }, error = function(e) {
+      list(error = paste("Error dalam model:", e$message))
+    })
   })
   
+  # OUTPUT: Model summary dengan informasi transformasi
   output$model_summary <- renderPrint({
-    summary(model_fit())
+    model <- model_fit()
+    
+    if (is.list(model) && !is.null(model$error)) {
+      cat("ERROR:", model$error, "\n")
+      cat("Coba gunakan transformasi yang berbeda atau periksa data Anda.\n")
+      return()
+    }
+    
+    # Informasi transformasi
+    cat("==================== INFORMASI TRANSFORMASI ====================\n")
+    cat("Variabel Y:", input$dep_var, 
+        ifelse(input$trans_dep == "none", "", paste("(Transformasi:", input$trans_dep, ")")), "\n")
+    cat("Variabel X:", paste(input$indep_vars, collapse = ", "), 
+        ifelse(input$trans_indep == "none", "", paste("(Transformasi:", input$trans_indep, ")")), "\n")
+    cat("======================= RINGKASAN MODEL ========================\n")
+    
+    print(summary(model))
+  })
+    
+  # reactive untuk menampilkan statistik deskriptif data yang difilter
+  filtered_data <- reactive({
+    req(input$prov_var)
+    data_dashboard[is.na(data_dashboard)] <-  0 
+    data_dashboard[data_dashboard$provinsi == input$prov_var,]
+  })
+  
+  # Output untuk statistik deskriptif
+  output$descriptive_stats <- renderPrint({
+    req(input$dep_var, input$indep_vars)
+    
+    data_filtered <- filtered_data()
+    selected_vars <- c(input$dep_var, input$indep_vars)
+    
+    cat("Provinsi:", input$prov_var, "\n")
+    cat("Jumlah Observasi:", nrow(data_filtered), "\n\n")
+    
+    print(summary(data_filtered[, selected_vars, drop = FALSE]))
+  })
+  
+  # Output untuk interpretasi statistik deskriptif
+  output$inter_descriptive_stats <- renderPrint({
+    req(input$dep_var, input$indep_vars)
+    
+    data_filtered <- filtered_data()
+    selected_vars <- c(input$dep_var, input$indep_vars)
+    
+    # Interpretasi untuk setiap variabel
+    for (var in selected_vars) {
+      var_data <- data_filtered[[var]]
+      var_data <- var_data[!is.na(var_data)]  # Hapus NA
+      
+      if (length(var_data) == 0) {
+        cat(paste("•", var, ": Tidak ada data yang valid\n\n"))
+        next
+      }
+      
+      # Hitung statistik
+      mean_val <- mean(var_data, na.rm = TRUE)
+      median_val <- median(var_data, na.rm = TRUE)
+      sd_val <- sd(var_data, na.rm = TRUE)
+      min_val <- min(var_data, na.rm = TRUE)
+      max_val <- max(var_data, na.rm = TRUE)
+      q1 <- quantile(var_data, 0.25, na.rm = TRUE)
+      q3 <- quantile(var_data, 0.75, na.rm = TRUE)
+      iqr_val <- q3 - q1
+      cv <- (sd_val / mean_val) * 100  # Coefficient of variation
+      
+      cat(paste("•", var, ":\n"))
+      
+      # Interpretasi tendensi sentral
+      if (abs(mean_val - median_val) / sd_val < 0.1) {
+        cat("  - Distribusi: Relatif simetris (rata-rata ≈ median)\n")
+      } else if (mean_val > median_val) {
+        cat("  - Distribusi: Condong ke kanan (skewed right) - ada nilai ekstrem tinggi\n")
+      } else {
+        cat("  - Distribusi: Condong ke kiri (skewed left) - ada nilai ekstrem rendah\n")
+      }
+      
+      # Interpretasi variabilitas
+      if (cv < 15) {
+        cat("  - Variabilitas: Rendah (CV < 15%) - data relatif homogen\n")
+      } else if (cv < 35) {
+        cat("  - Variabilitas: Sedang (CV 15-35%) - data cukup beragam\n")
+      } else {
+        cat("  - Variabilitas: Tinggi (CV > 35%) - data sangat beragam\n")
+      }
+      
+      # Interpretasi rentang
+      cat(paste("  - Rentang:", round(max_val - min_val, 2), 
+                "dengan IQR:", round(iqr_val, 2), "\n"))
+      
+      # Deteksi outlier potensial
+      lower_fence <- q1 - 1.5 * iqr_val
+      upper_fence <- q3 + 1.5 * iqr_val
+      outliers <- sum(var_data < lower_fence | var_data > upper_fence)
+      
+      if (outliers > 0) {
+        cat(paste("  - Outlier: Terdeteksi", outliers, "nilai ekstrem potensial\n"))
+      } else {
+        cat("  - Outlier: Tidak terdeteksi nilai ekstrem\n")
+      }
+      
+      # Interpretasi kontekstual berdasarkan jenis variabel
+      if (var == input$dep_var) {
+        cat("  - Status: Variabel DEPENDEN (yang diprediksi)\n")
+        if (mean_val < 5) {
+          cat("  - Kondisi: Frekuensi kejadian relatif rendah\n\n")
+        } else if (mean_val < 20) {
+          cat("  - Kondisi: Frekuensi kejadian sedang\n\n")
+        } else {
+          cat("  - Kondisi: Frekuensi kejadian tinggi\n\n")
+        }
+      } else {
+        cat("  - Status: Variabel INDEPENDEN (prediktor)\n")
+        
+        # Interpretasi khusus untuk variabel cuaca
+        if (grepl("suhu", var, ignore.case = TRUE)) {
+          if (mean_val < 25) {
+            cat("  - Kondisi: Suhu rata-rata relatif sejuk\n\n")
+          } else if (mean_val < 30) {
+            cat("  - Kondisi: Suhu rata-rata normal\n\n")
+          } else {
+            cat("  - Kondisi: Suhu rata-rata relatif panas\n\n")
+          }
+        } else if (grepl("hujan", var, ignore.case = TRUE)) {
+          if (mean_val < 100) {
+            cat("  - Kondisi: Curah hujan relatif rendah\n\n")
+          } else if (mean_val < 300) {
+            cat("  - Kondisi: Curah hujan sedang\n\n")
+          } else {
+            cat("  - Kondisi: Curah hujan tinggi\n\n")
+          }
+        } else if (grepl("kelembaban", var, ignore.case = TRUE)) {
+          if (mean_val < 70) {
+            cat("  - Kondisi: Kelembaban relatif rendah\n\n")
+          } else if (mean_val < 85) {
+            cat("  - Kondisi: Kelembaban normal\n\n")
+          } else {
+            cat("  - Kondisi: Kelembaban tinggi\n\n")
+          }
+        } else if (grepl("angin", var, ignore.case = TRUE)) {
+          if (mean_val < 5) {
+            cat("  - Kondisi: Kecepatan angin relatif tenang\n\n")
+          } else if (mean_val < 15) {
+            cat("  - Kondisi: Kecepatan angin sedang\n\n")
+          } else {
+            cat("  - Kondisi: Kecepatan angin kencang\n\n")
+          }
+        }
+      }
+    }
   })
   
   output$diagnostic_plot <- renderPlot({
@@ -1450,7 +1968,15 @@ server <- function(input, output,session){
     par(mfrow = c(1, 1))
   })
   
-  output$asumption <- renderPrint({
+  # Reactive values untuk menyimpan hasil pengujian
+  assumption_results <- reactiveValues(
+    homoskedastisitas = NULL,
+    normalitas = NULL,
+    multikolinearitas = NULL,
+    autokorelasi = NULL
+  )
+  
+  output$assumption1 <- renderPrint({
     req(model_fit())
     
     model <- model_fit()
@@ -1466,20 +1992,28 @@ server <- function(input, output,session){
       cat("   Breusch-Pagan Test:\n")
       cat("   - Statistics BP =", round(bp_test$statistic, 4), "\n")
       cat("   - p-value =", round(bp_test$p.value, 4), "\n")
+      
       if(bp_test$p.value > 0.05) {
         cat("   - Keputusan = GAGAL TOLAK H₀ (p > 0.05)\n\n")
-        cat("   Berdasarkan tingkat signifikansi 5%, p-value uji Breusch-Pagan lebih besar dari α, sehingga H₀ diterima.\n")
-        cat("   Dengan demikian, model regresi memenuhi asumsi homoskedastisitas atau variansi residual dianggap konstan.\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Breusch-Pagan lebih besar dari α, sehingga H₀ diterima.\n")
+        cat("Dengan demikian, model regresi memenuhi asumsi homoskedastisitas atau variansi residual dianggap konstan.\n")
+        assumption_results$homoskedastisitas <- TRUE
       } else {
-        cat("   - Keputusan = TOLAK H₀ ASUMSI HOMOSKEDASTISITAS TIDAK TERPENUHI (p ≤ 0.05)\n\n")
-        cat("   Berdasarkan tingkat signifikansi 5%, p-value uji Breusch-Pagan kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
-        cat("   Dengan demikian, model regresi belum memenuhi asumsi homoskedastisitas atau terdapat heteroskedastisitas pada model.\n")
+        cat("   - Keputusan = TOLAK H₀ (p ≤ 0.05)\n\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Breusch-Pagan kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
+        cat("Dengan demikian, model regresi belum memenuhi asumsi homoskedastisitas atau terdapat heteroskedastisitas pada model.\n")
+        assumption_results$homoskedastisitas <- FALSE
       }
     }, error = function(e) {
       cat("   Error dalam uji Breusch-Pagan:", e$message, "\n")
+      assumption_results$homoskedastisitas <- FALSE
     })
+  })
+  
+  output$assumption2 <- renderPrint({
+    req(model_fit())
     
-    cat("\n", rep("-", 60), "\n\n")
+    model <- model_fit()
     
     # 2. UJI NORMALITAS RESIDUAL
     cat("2. UJI NORMALITAS RESIDUAL\n")
@@ -1494,14 +2028,17 @@ server <- function(input, output,session){
       cat("   Shapiro-Wilk Test:\n")
       cat("   - Statistics SW =", round(sw_test$statistic, 4), "\n")
       cat("   - p-value =", round(sw_test$p.value, 4), "\n")
+      
       if(sw_test$p.value > 0.05) {
         cat("   - Keputusan = GAGAL TOLAK H₀ (p > 0.05)\n\n")
-        cat("   Berdasarkan tingkat signifikansi 5%, p-value uji Shapiro-Wilk lebih besar dari α, sehingga H₀ diterima.\n")
-        cat("   Dengan demikian, model regresi memenuhi asumsi normalitas error atau residual berdistribusi normal.\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Shapiro-Wilk lebih besar dari α, sehingga H₀ diterima.\n")
+        cat("Dengan demikian, model regresi memenuhi asumsi normalitas error atau residual berdistribusi normal.\n")
+        assumption_results$normalitas <- TRUE
       } else {
         cat("   - Keputusan = TOLAK H₀ (p ≤ 0.05)\n\n")
-        cat("   Berdasarkan tingkat signifikansi 5%, p-value uji Shapiro-Wilk kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
-        cat("   Dengan demikian, model regresi belum memenuhi asumsi normalitas error atau residual tidak berdistribusi normal.\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Shapiro-Wilk kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
+        cat("Dengan demikian, model regresi belum memenuhi asumsi normalitas error atau residual tidak berdistribusi normal.\n")
+        assumption_results$normalitas <- FALSE
       }
     } else {
       # Kolmogorov-Smirnov Test untuk sampel besar
@@ -1509,19 +2046,25 @@ server <- function(input, output,session){
       cat("   Kolmogorov-Smirnov Test:\n")
       cat("   - Statistics KS =", round(ks_test$statistic, 4), "\n")
       cat("   - p-value =", round(ks_test$p.value, 4), "\n")
+      
       if(ks_test$p.value > 0.05) {
         cat("   - Keputusan = GAGAL TOLAK H₀ (p > 0.05)\n\n")
-        cat("   Berdasarkan tingkat signifikansi 5%, p-value uji Kolmogorov-Smirnov lebih besar dari α, sehingga H₀ diterima.\n")
-        cat("   Dengan demikian, model regresi memenuhi asumsi normalitas error atau residual berdistribusi normal.\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Kolmogorov-Smirnov lebih besar dari α, sehingga H₀ diterima.\n")
+        cat("Dengan demikian, model regresi memenuhi asumsi normalitas error atau residual berdistribusi normal.\n")
+        assumption_results$normalitas <- TRUE
       } else {
         cat("   - Keputusan = TOLAK H₀ (p ≤ 0.05)\n\n")
-        cat("   Berdasarkan tingkat signifikansi 5%, p-value uji Kolmogorov-Smirnov kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
-        cat("   Dengan demikian, model regresi belum memenuhi asumsi normalitas error atau residual tidak berdistribusi normal.\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Kolmogorov-Smirnov kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
+        cat("Dengan demikian, model regresi belum memenuhi asumsi normalitas error atau residual tidak berdistribusi normal.\n")
+        assumption_results$normalitas <- FALSE
       }
     }
+  })
+  
+  output$assumption3 <- renderPrint({
+    req(model_fit())
     
-    cat("\n" , rep("-", 60), "\n\n")
-    
+    model <- model_fit()    
     # 3. UJI MULTIKOLINEARITAS (VIF)
     cat("3. UJI MULTIKOLINEARITAS\n")
     cat("   Variance Inflation Factor (VIF)\n")
@@ -1544,22 +2087,31 @@ server <- function(input, output,session){
         max_vif <- max(vif_values)
         if(max_vif < 5) {
           cat("\n   Keputusan = TIDAK ADA MULTIKOLINEARITAS (semua VIF < 5)\n\n")
-          cat("   Dengan demikian, model regresi memenuhi asumsi nonmultikolinearitas\n")
+          cat("Dengan demikian, model regresi memenuhi asumsi nonmultikolinearitas\n")
+          assumption_results$multikolinearitas <- TRUE
         } else if(max_vif <= 10) {
           cat("\n   Keputusan = TERDAPAT MULTIKOLINEARITAS SEDANG PADA MODEL (ada VIF 5-10)\n\n")
-          cat("   Dengan demikian, model regresi belum memenuhi asumsi nonmultikolinearitas.\n")
+          cat("Dengan demikian, model regresi belum memenuhi asumsi nonmultikolinearitas.\n")
+          assumption_results$multikolinearitas <- FALSE
         } else {
           cat("\n   Keputusan = TERDAPAT MULTIKOLINEARITAS TINGGI PADA MODEL (ada VIF > 10)\n\n")
-          cat("   Dengan demikian, model regresi belum memenuhi asumsi nonmultikolinearitas.\n")
+          cat("Dengan demikian, model regresi belum memenuhi asumsi nonmultikolinearitas.\n")
+          assumption_results$multikolinearitas <- FALSE
         }
       } else {
-        cat("   Model regresi hanya memiliki satu variabel independen, sehingga uji multikolinearitas tidak diperlukan.\n")
+        cat("Model regresi hanya memiliki satu variabel independen, sehingga uji multikolinearitas tidak diperlukan.\n")
+        assumption_results$multikolinearitas <- TRUE
       }
     }, error = function(e) {
       cat("   Error dalam uji VIF:", e$message, "\n")
+      assumption_results$multikolinearitas <- FALSE
     })
+  })
+  
+  output$assumption4 <- renderPrint({
+    req(model_fit())
     
-    cat("\n", rep("-", 60), "\n\n")
+    model <- model_fit()
     
     # 4. UJI AUTOKORELASI (Durbin-Watson Test)
     cat("4. UJI AUTOKORELASI\n")
@@ -1584,19 +2136,81 @@ server <- function(input, output,session){
       }
       
       if(dw_test$p.value > 0.05) {
-        cat("   Keputusan: ASUMSI TIDAK ADA AUTOKORELASI TERPENUHI (p > 0.05)\n\n")
-        cat("   Berdasarkan tingkat signifikansi 5%, p-value uji Durbin-Watson lebih besar dari α, sehingga H₀ diterima.\n") 
-        cat("   Dengan demikian, model regresi memenuhi asumsi nonautokorelasi atau tidak terdapat autokorelasi pada model.\n")
+        cat("   Keputusan: TIDAK ADA AUTOKORELASI (p > 0.05)\n\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Durbin-Watson lebih besar dari α, sehingga H₀ diterima.\n") 
+        cat("Dengan demikian, model regresi memenuhi asumsi nonautokorelasi atau tidak terdapat autokorelasi pada model.\n")
+        assumption_results$autokorelasi <- TRUE
       } else {
         cat("   Keputusan: ADA AUTOKORELASI (p ≤ 0.05)\n\n")
-        cat("   Berdasarkan tingkat signifikansi 5%, p-value uji Durbin-Watson kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
-        cat("   Dengan demikian, model regresi belum memenuhi asumsi nonautokorelasi atau masih terdapat autokorelasi pada model.\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Durbin-Watson kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
+        cat("Dengan demikian, model regresi belum memenuhi asumsi nonautokorelasi atau masih terdapat autokorelasi pada model.\n")
+        assumption_results$autokorelasi <- FALSE
       }
     }, error = function(e) {
       cat("   Error dalam uji Durbin-Watson:", e$message, "\n")
+      assumption_results$autokorelasi <- FALSE
     })
+  })
+  
+  # OVERALL CHECK - Tidak melakukan pengujian ulang
+  output$overall_check <- renderPrint({
+    req(model_fit())
     
-    cat("\n" , rep("-", 60), "\n\n")
+    # Tunggu semua hasil pengujian tersedia
+    req(
+      !is.null(assumption_results$homoskedastisitas),
+      !is.null(assumption_results$normalitas),
+      !is.null(assumption_results$multikolinearitas),
+      !is.null(assumption_results$autokorelasi)
+    )
+    
+    # Ringkasan hasil
+    cat("RINGKASAN HASIL PENGUJIAN ASUMSI:\n")
+    cat("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    
+    # Status masing-masing asumsi
+    status_homo <- if(assumption_results$homoskedastisitas) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
+    status_normal <- if(assumption_results$normalitas) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
+    status_multi <- if(assumption_results$multikolinearitas) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
+    status_auto <- if(assumption_results$autokorelasi) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
+    
+    cat(sprintf("1. Homoskedastisitas     : %s\n", status_homo))
+    cat(sprintf("2. Normalitas Residual   : %s\n", status_normal))
+    cat(sprintf("3. Nonmultikolinearitas  : %s\n", status_multi))
+    cat(sprintf("4. Nonautokorelasi       : %s\n", status_auto))
+    
+    cat("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    
+    # Hitung jumlah asumsi yang terpenuhi
+    total_terpenuhi <- sum(c(
+      assumption_results$homoskedastisitas,
+      assumption_results$normalitas,
+      assumption_results$multikolinearitas,
+      assumption_results$autokorelasi
+    ))
+    
+    cat(sprintf("Uji Terpenuhi            : %d\n", total_terpenuhi))
+    cat(sprintf("Uji Tidak Terpenuhi      : %d\n", 4 - total_terpenuhi))
+    cat(sprintf("Persentase Terpenuhi     : %.1f%%\n", (total_terpenuhi/4)*100))
+    cat("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    
+    if(total_terpenuhi == 4) {
+      cat("🎉 SEMUA ASUMSI REGRESI TERPENUHI (4/4)\n")
+    } else if(total_terpenuhi >= 2) {
+      cat("⚠️  SEBAGIAN ASUMSI TERPENUHI (", total_terpenuhi, "/4)\n\n")
+      cat("Model regresi masih dapat digunakan dengan catatan:\n")
+      
+      # Daftar asumsi yang tidak terpenuhi
+      cat("- Asumsi yang TIDAK terpenuhi:\n")
+      if(!assumption_results$homoskedastisitas) cat("  • Homoskedastisitas\n")
+      if(!assumption_results$normalitas) cat("  • Normalitas Residual\n")
+      if(!assumption_results$multikolinearitas) cat("  • Nonmultikolinearitas\n")
+      if(!assumption_results$autokorelasi) cat("  • Nonautokorelasi\n")
+      
+    } else {
+      cat("❌ MAYORITAS ASUMSI TIDAK TERPENUHI (", total_terpenuhi, "/4)\n\n")
+      cat("Hasil inferensi statistik dari model ini mungkin tidak dapat diandalkan.\n")
+    }
   })
   
   # Output Tabel Dinamis
