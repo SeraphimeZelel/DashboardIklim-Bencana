@@ -191,7 +191,9 @@ metadata_kamus <- list(
 ui <- dashboardPage(
   title = "Climate Change",
   help = NULL,
+  dark = NULL,
   fullscreen = TRUE,
+  scrollToTop = TRUE,
   header = dashboardHeader(
     title = dashboardBrand(
       title = "Climate Change",
@@ -317,6 +319,7 @@ ui <- dashboardPage(
     tabItems(
       tabItem(
         tabName = "home",
+        
         box(
           title = NULL,
           width = 12,
@@ -325,7 +328,7 @@ ui <- dashboardPage(
           div(
             class = "text-center",
             style = "padding: 40px 20px; background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
-             border-radius: 15px; color: white; margin: -15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);",
+                 border-radius: 15px; color: white; margin: -15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);",
             
             div(
               style = "margin-bottom: 30px;",
@@ -342,13 +345,13 @@ ui <- dashboardPage(
             
             div(
               style = "margin-bottom: 20px;",
-              actionButton("to_dashboard_button",
-                           "Menuju Dashboard",
+              actionButton("to_dashboard_button", 
+                           "Menuju Dashboard", 
                            class = "btn-lg",
-                           style = "background: #28a745; border: none; padding: 15px 40px;
-                            font-size: 18px; font-weight: bold; border-radius: 25px;
-                            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
-                            transition: all 0.3s ease; color: white;")
+                           style = "background: #28a745; border: none; padding: 15px 40px; 
+                           font-size: 18px; font-weight: bold; border-radius: 25px; 
+                           box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4); 
+                           transition: all 0.3s ease; color: white;")
             ),
             
             div(
@@ -357,15 +360,45 @@ ui <- dashboardPage(
                            "Informasi Lebih Lanjut",
                            icon = icon("info-circle"),
                            style = "background:none ; border: 2px solid white;
-                           color: white; padding: 10px 25px; border-radius: 20px;
-                            transition: all 0.3s ease;")
+                                color: white; padding: 10px 25px; border-radius: 20px;
+                                transition: all 0.3s ease;")
             ),
             
             br(),
             uiOutput("more_info_ui")
           )
-        )
+        ), 
+        
+        
+        box(
+          title = NULL,
+          width = 12,
+          solidHeader = TRUE,
+          status = "primary",
+          div(
+            class = "text-center",
+            style = "padding: 40px 20px; background: linear-gradient(135deg, #0072ff 0%, #00c6ff 100%); /* Slightly different gradient or same */
+                 border-radius: 15px; color: white; margin-top: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);", # Added margin-top
+            
+            div(
+              style = "margin-bottom: 20px;",
+              h2("Video User Guide Penggunaan Dashboard",
+                 style = "font-family: 'Arial', sans-serif; font-weight: bold; font-size: 24px; color: white; text-shadow: 1px 1px 3px rgba(0,0,0,0.3);")
+            ),
+            
+            div(
+              style = "position: relative; padding-bottom: 45%; height: 0; overflow: hidden; margin-bottom: 15px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);",
+              tags$iframe(
+                src = "https://www.youtube.com/embed/LY6K_GD4ypc", # Updated video link
+                style = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;",
+                allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+                allowfullscreen = NA
+              )
+            )
+          )
+        ) 
       ),
+      
       
       tabItem(
         tabName = "dashboard-provinsi",
@@ -394,8 +427,8 @@ ui <- dashboardPage(
                 selectInput(
                   inputId = "provinsi_terpilih",
                   label = "Pilih Provinsi :",
-                  choices  = unique(data_dashboard$provinsi),
-                  selected = "Aceh",
+                  choices  = c("Indonesia", unique(data_dashboard$provinsi)),
+                  selected = "Indonesia",
                   width = "100%"
                 )
               ),
@@ -821,7 +854,6 @@ ui <- dashboardPage(
                      tags$li(tags$strong("Ringkasan Pemeriksaan Uji Model Regresi:"), " Lihat pemeriksaan asumsi klasik, yaitu normalitas, homoskedastisitas, non-autokorelasi, dan non-multikolinieritas.
                              Jika ada asumsi yang terlanggar taksiran parameter masih dapat dilakukan, tetapi penaksir yang diperoleh bukanlah penaksir terbaik.
                              Penaksir yang memenuhi asumsi klasik akan bersifat BLUE (best linear unbiased estimator) yaitu penaksir linier, takbias terbaik karena memiliki varians minimum. "),
-                     
                    )
                  )
           )
@@ -1069,7 +1101,7 @@ ui <- dashboardPage(
             width = 12,
             fluidRow(
               column(
-                width = 5,
+                width = 4,
                 selectInput(
                   inputId = "provinsi_terpilih_stat",
                   label = "Pilih Provinsi:",
@@ -1089,7 +1121,7 @@ ui <- dashboardPage(
                 )
               ),
               column(
-                width = 3,
+                width = 4,
                 div(
                   style = "text-align: right; padding-top: 25px;",
                   downloadButton("download_data_provinsi", "Unduh Data (.csv)")
@@ -2432,7 +2464,7 @@ server <- function(input, output,session){
       var_data <- var_data[!is.na(var_data)]  # Hapus NA
       
       if (length(var_data) == 0) {
-        cat(paste("•", var, ": Tidak ada data yang valid\n\n"))
+        cat(paste("•", var, ": Tidak ada data yang valid\n"))
         next
       }
       
@@ -2486,11 +2518,11 @@ server <- function(input, output,session){
       if (var == input$dep_var) {
         cat("  - Status: Variabel DEPENDEN (yang diprediksi)\n")
         if (mean_val < 5) {
-          cat("  - Kondisi: Frekuensi kejadian relatif rendah\n\n")
+          cat("  - Kondisi: Frekuensi kejadian relatif rendah\n")
         } else if (mean_val < 20) {
-          cat("  - Kondisi: Frekuensi kejadian sedang\n\n")
+          cat("  - Kondisi: Frekuensi kejadian sedang\n")
         } else {
-          cat("  - Kondisi: Frekuensi kejadian tinggi\n\n")
+          cat("  - Kondisi: Frekuensi kejadian tinggi\n")
         }
       } else {
         cat("  - Status: Variabel INDEPENDEN (prediktor)\n")
@@ -2498,35 +2530,35 @@ server <- function(input, output,session){
         # Interpretasi khusus untuk variabel cuaca
         if (grepl("suhu", var, ignore.case = TRUE)) {
           if (mean_val < 25) {
-            cat("  - Kondisi: Suhu rata-rata relatif sejuk\n\n")
+            cat("  - Kondisi: Suhu rata-rata relatif sejuk\n")
           } else if (mean_val < 30) {
-            cat("  - Kondisi: Suhu rata-rata normal\n\n")
+            cat("  - Kondisi: Suhu rata-rata normal\n")
           } else {
-            cat("  - Kondisi: Suhu rata-rata relatif panas\n\n")
+            cat("  - Kondisi: Suhu rata-rata relatif panas\n")
           }
         } else if (grepl("hujan", var, ignore.case = TRUE)) {
           if (mean_val < 100) {
-            cat("  - Kondisi: Curah hujan relatif rendah\n\n")
+            cat("  - Kondisi: Curah hujan relatif rendah\n")
           } else if (mean_val < 300) {
-            cat("  - Kondisi: Curah hujan sedang\n\n")
+            cat("  - Kondisi: Curah hujan sedang\n")
           } else {
-            cat("  - Kondisi: Curah hujan tinggi\n\n")
+            cat("  - Kondisi: Curah hujan tinggi\n")
           }
         } else if (grepl("kelembaban", var, ignore.case = TRUE)) {
           if (mean_val < 70) {
-            cat("  - Kondisi: Kelembaban relatif rendah\n\n")
+            cat("  - Kondisi: Kelembaban relatif rendah\n")
           } else if (mean_val < 85) {
-            cat("  - Kondisi: Kelembaban normal\n\n")
+            cat("  - Kondisi: Kelembaban normal\n")
           } else {
-            cat("  - Kondisi: Kelembaban tinggi\n\n")
+            cat("  - Kondisi: Kelembaban tinggi\n")
           }
         } else if (grepl("angin", var, ignore.case = TRUE)) {
           if (mean_val < 5) {
-            cat("  - Kondisi: Kecepatan angin relatif tenang\n\n")
+            cat("  - Kondisi: Kecepatan angin relatif tenang\n")
           } else if (mean_val < 15) {
-            cat("  - Kondisi: Kecepatan angin sedang\n\n")
+            cat("  - Kondisi: Kecepatan angin sedang\n")
           } else {
-            cat("  - Kondisi: Kecepatan angin kencang\n\n")
+            cat("  - Kondisi: Kecepatan angin kencang\n")
           }
         }
       }
@@ -2758,17 +2790,17 @@ server <- function(input, output,session){
                 passed, total, (passed/total)*100))
     
     if(passed == total) {
-      cat("🎉 EXCELLENT! Model regresi memenuhi SEMUA asumsi klasik.\n")
+      cat("🎉 Model regresi memenuhi semua asumsi klasik.\n")
       cat("   Penaksir yang dihasilkan bersifat BLUE (Best Linear Unbiased Estimator).\n")
       cat("   Model dapat digunakan untuk inferensi dan prediksi dengan tingkat kepercayaan tinggi.\n")
     } else if(passed >= total * 0.75) {
-      cat("✅ GOOD! Model regresi memenuhi sebagian besar asumsi klasik.\n")
+      cat("✅ Model regresi memenuhi sebagian besar asumsi klasik.\n")
       cat("   Penaksir masih dapat diandalkan, namun perlu perhatian pada asumsi yang tidak terpenuhi.\n")
-      cat("   Pertimbangkan transformasi data atau metode regresi alternatif untuk asumsi yang dilanggar.\n")
+      cat("   Pertimbangkan transformasi data dengan menyesuaikan asumsi yang terlanggar.\n")
     } else if(passed >= total * 0.5) {
       cat("⚠️  CAUTION! Model regresi hanya memenuhi sebagian asumsi klasik.\n")
       cat("   Penaksir mungkin tidak optimal. Hasil inferensi harus diinterpretasi dengan hati-hati.\n")
-      cat("   Sangat disarankan untuk melakukan transformasi data atau menggunakan metode regresi robust.\n")
+      cat("   Sangat disarankan untuk melakukan transformasi data sampai model memenuhi setidaknya dua dari empat asumsi.\n")
     } else {
       cat("❌ WARNING! Model regresi melanggar sebagian besar asumsi klasik.\n")
       cat("   Penaksir tidak bersifat BLUE dan hasil inferensi tidak dapat diandalkan.\n")
@@ -2777,22 +2809,20 @@ server <- function(input, output,session){
     
     cat("\n================================================================\n")
     cat("REKOMENDASI:\n")
-    
     if(!assumption_results$normalitas) {
-      cat("• Normalitas: Coba transformasi Box-Cox, Yeo-Johnson, atau log pada variabel dependen\n")
+      cat("• Normalitas: Pertimbangkan transformasi pada variabel dependen (Y) seperti log, sqrt, Box-Cox, atau Yeo-Johnson.\n")
     }
     if(!assumption_results$homoskedastisitas) {
-      cat("• Homoskedastisitas: Gunakan Weighted Least Squares (WLS) atau transformasi variabel\n")
+      cat("• Homoskedastisitas: Pertimbangkan transformasi pada variabel independen (X) atau dependen (Y), misalnya log, sqrt, atau reciprocal.\n")
     }
     if(!assumption_results$multikolinearitas) {
-      cat("• Multikolinearitas: Hapus variabel dengan VIF tinggi atau gunakan Ridge Regression\n")
+      cat("• Multikolinearitas: Pertimbangkan transformasi pada variabel independen (X) seperti log, square, atau standardisasi (z-score).\n")
     }
     if(!assumption_results$autokorelasi) {
-      cat("• Autokorelasi: Tambahkan lag variabel atau gunakan Generalized Least Squares (GLS)\n")
+      cat("• Autokorelasi: Pertimbangkan transformasi pada variabel dependen (Y) seperti log, sqrt, atau diferensiasi manual jika data berurutan.\n")
     }
-    
     if(passed == total) {
-      cat("• Model sudah optimal! Lanjutkan dengan interpretasi dan prediksi.\n")
+      cat("• Model sudah optimal!\n")
     }
   })
   
@@ -2801,12 +2831,46 @@ server <- function(input, output,session){
   ## Filter Data Reaktif untuk Tabel Provinsi
   tabel_provinsi_filter <- reactive({
     if (input$provinsi_terpilih_stat == "Indonesia") {
-      data_dashboard %>%
-        filter(tahun >= input$rentang_tahun_provinsi_stat[1] & tahun <= input$rentang_tahun_provinsi_stat[2])
+      data_dashboard[-1] %>%
+        filter(tahun >= input$rentang_tahun_provinsi_stat[1] & tahun <= input$rentang_tahun_provinsi_stat[2]) %>% 
+        rename(
+          Provinsi = provinsi,
+          Tahun = tahun,
+          "Total kejadian" = Total_Kejadian,
+          "Total korban" = Total_Korban,
+          "Korban banjir" = korban_Banjir,
+          "Korban cuaca ekstrem" = korban_Cuaca_ekstrem,
+          "Korban gelombang pasang / abrasi" = korban_Gelombang_pasang_Abrasi,
+          "Korban kebakaran hutan dan lahan" = korban_Kebakaran_hutan_dan_lahan,
+          "Korban kekeringan" = korban_Kekeringan,
+          "Korban longsor" = korban_Longsor,
+          "Suhu rata-rata" = suhu_rata2,
+          "Curah hujan" = curah_hujan,
+          "Kecepatan angin" = kecepatan_angin,
+          Kelembaban = kelembaban,
+          "Tekanan udara" = tekanan_udara
+        )
     } else {
-      data_dashboard %>%
+      data_dashboard [-1] %>%
         filter(provinsi == input$provinsi_terpilih_stat) %>%
-        filter(tahun >= input$rentang_tahun_provinsi_stat[1] & tahun <= input$rentang_tahun_provinsi_stat[2])
+        filter(tahun >= input$rentang_tahun_provinsi_stat[1] & tahun <= input$rentang_tahun_provinsi_stat[2]) %>% 
+        rename(
+          Provinsi = provinsi,
+          Tahun = tahun,
+          "Total kejadian" = Total_Kejadian,
+          "Total korban" = Total_Korban,
+          "Korban banjir" = korban_Banjir,
+          "Korban cuaca ekstrem" = korban_Cuaca_ekstrem,
+          "Korban gelombang pasang / abrasi" = korban_Gelombang_pasang_Abrasi,
+          "Korban kebakaran hutan dan lahan" = korban_Kebakaran_hutan_dan_lahan,
+          "Korban kekeringan" = korban_Kekeringan,
+          "Korban longsor" = korban_Longsor,
+          "Suhu rata-rata" = suhu_rata2,
+          "Curah hujan" = curah_hujan,
+          "Kecepatan angin" = kecepatan_angin,
+          Kelembaban = kelembaban,
+          "Tekanan udara" = tekanan_udara
+        )
     }
   })
   
@@ -2820,7 +2884,6 @@ server <- function(input, output,session){
         dom = 'Bfrtip',
         buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
       ),
-      filter = 'top',
       rownames = FALSE
     )
   })
@@ -2846,14 +2909,14 @@ server <- function(input, output,session){
     data_dashboard %>%
       filter(tahun >= input$rentang_tahun_bencana_stat[1] & tahun <= input$rentang_tahun_bencana_stat[2]) %>%
       select(
-        provinsi,
-        tahun,
+        Provinsi = provinsi,
+        Tahun = tahun,
         bencana_spesifik = all_of(bencana_spesifik),
         korban_spesifik = all_of(korban_spesifik)
       ) %>%
       rename(
         !!paste("Kejadian", bencana_spesifik) := bencana_spesifik,
-        !!paste("Korban", bencana_spesifik) := korban_spesifik
+        !!paste("Korban", bencana_spesifik) := korban_spesifik,
       )
   })
   
@@ -2867,7 +2930,6 @@ server <- function(input, output,session){
         dom = 'Bfrtip',
         buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
       ),
-      filter = 'top',
       rownames = FALSE
     )
   })
@@ -3146,6 +3208,17 @@ server <- function(input, output,session){
               tags$li("Menganalisis dampak perubahan iklim terhadap bencana di Indonesia selama 2020–2024."),
               tags$li("Mengidentifikasi faktor kerentanan masyarakat terhadap dampak cuaca ekstrem."),
               tags$li("Merumuskan pendekatan penyajian data yang lebih efektif untuk mendukung kebijakan berbasis data.")
+            ),
+            
+            h4("Dokumentasi", style = "font-weight: bold;"),
+            p(
+              "Dokumentasi lengkap mengenai kode, sumber data, dan metodologi yang digunakan dapat diakses pada repositori GitHub kami melalui ",
+              tags$a(
+                style = "color: white;",
+                href = "https://github.com/SeraphimeZelel/DashboardIklim-Bencana", 
+                "tautan ini.",
+                target = "_blank"
+              )
             )
           )
         )
