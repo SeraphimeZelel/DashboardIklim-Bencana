@@ -57,9 +57,7 @@ variabel_iklim <- c("Suhu Rata-Rata" = "suhu_rata2",
                     "Kecepatan Angin" = "kecepatan_angin",
                     "Tekanan Udara" = "tekanan_udara")
 
-numeric_vars <- data_dashboard %>%
-  select(where(is.numeric), -tahun) %>% # Pilih semua kolom numerik, KECUALI kolom 'tahun'
-  names()
+numeric_vars <- names(data_dashboard[c(-1,-3,-12:-17)])[sapply(data_dashboard[c(-1,-3,-12:-17)], is.numeric)]
 
 format_label <- function(x) {
   sapply(x, function(n) {
@@ -2758,7 +2756,7 @@ server <- function(input, output,session){
     
     cat(sprintf("KESIMPULAN: Model memenuhi %d dari %d asumsi klasik (%.0f%%).\n\n", 
                 passed, total, (passed/total)*100))
-  
+    
     if(passed == total) {
       cat("🎉 EXCELLENT! Model regresi memenuhi SEMUA asumsi klasik.\n")
       cat("   Penaksir yang dihasilkan bersifat BLUE (Best Linear Unbiased Estimator).\n")
@@ -2946,65 +2944,70 @@ server <- function(input, output,session){
     list(
       id = "profile1",
       name = "T.M. Al-Asy'ari Al-Muchtari",
-      img = "profile_1.png",
+      img = "https://res.cloudinary.com/dkc6jbcoe/image/upload/v1752493760/WhatsApp_Image_2025-07-14_at_18.19.39_fb486e4d_whbh2u.jpg",
       email = "222313397@stis.ac.id",
       asal = "Bireuen, Aceh",
       kontribusi = tags$ol(
         tags$li("Membuat kerangka aplikasi"),
+        tags$li("Membuat dashboard bencana dan provinsi"),
         tags$li("Membuat peta reaktif sebaran bencana dan iklim"),
-        tags$li("Mengumpulkan dan membersihkan data bencana alam"),
-        tags$li("Mengumpulkan data shapefile json untuk peta reaktif")
+        tags$li("Melakukan integrasi data bencana dan iklim yang sudah dikumpulkan"),
+        tags$li("Mengumpulkan data geojson untuk peta reaktif")
       )
     ),
     list(
       id = "profile2", 
       name = "Qurany Nadhira Tsabita", 
-      img = "profile_2.png", 
+      img = "https://res.cloudinary.com/dklwpq0wd/image/upload/v1752492227/Untitled_design_jc5ism.png", 
       email = "222313323@stis.ac.id",
       asal = "Kediri, Jawa Timur",
       kontribusi = tags$ol(
         tags$li("Membuat beranda dashboard"),
         tags$li("Membuat dashboard data menurut provinsi"),
         tags$li("Mengumpulkan dan membersihkan variabel data iklim"),
-        tags$li("Menyusun laporan akhir projek")
+        tags$li("Menyusun laporan akhir projek"),
+        tags$li("Membuat video user guide")
       )
     ),
     list(
       id = "profile3",
       name = "Wahyu Nugraha Raomi Gading",
-      img = "profile_3.jpg",
+      img = "https://res.cloudinary.com/dkc6jbcoe/image/upload/v1752493760/profile_3_zxavkj.jpg",
       email = "222313421@stis.ac.id", 
       asal = "Sleman, DI Yogyakarta",
       kontribusi = tags$ol(
         tags$li("Membuat tabel dinamis menurut provinsi dan jenis bencana"),
         tags$li("Membuat metadata variabel yang digunakan"),
         tags$li("Membuat user guide tiap halaman"),
-        tags$li("Mengumpulkan sebagian variabel data iklim")
+        tags$li("Mengumpulkan sebagian variabel data iklim"),
+        tags$li("Membuat fitur unduh laporan")
       )
     ),
     list(
       id = "profile4",
       name = "Dinda Putri Nur Wulandari", 
-      img = "profile_4.png",
+      img = "https://res.cloudinary.com/dl8m3jqqd/image/upload/v1752502049/Untitled_design_xa75hi.png",
       email = "222313054@stis.ac.id", 
       asal = "Bandung Barat, Jawa Barat", 
       kontribusi = tags$ol(
-        tags$li("Membuat analisis model regresi dan kesimpulan menurut provinsi"),
+        tags$li("Memperkaya fitur analisis regresi dengan menambah transformasi dan uji asumsi"),
         tags$li("Membuat profil tim"),
-        tags$li("Mengumpulkan dana membersihkan sebagian data iklim"),
-        tags$li("Menyusun laporan akhir projek")
+        tags$li("Mengumpulkan dan membersihkan sebagian data iklim"),
+        tags$li("Menyusun laporan akhir projek"),
+        tags$li("Menambah proporsi sebaran bencana dan iklim pada dashboard provinsi")
       )
     ),
     list(
       id = "profile5",
       name = "Muhammad Hamlul Khair", 
-      img = "profile_5.png",
+      img = "https://res.cloudinary.com/dkc6jbcoe/image/upload/v1752494097/hamlul_axc4pa.jpg",
       email = "222313241@stis.ac.id", 
-      asal = "Aceh", 
+      asal = "Banda Aceh, Aceh", 
       kontribusi = tags$ol(
         tags$li("Membuat analisis korelasi dan kesimpulan antar variabel menurut provinsi"),
-        tags$li("Membuat analisis model regresi dan kesimpulan menurut provinsi"),
-        tags$li("")
+        tags$li("Membuat kerangka analisis model regresi dan interpretasinya"),
+        tags$li("Mengumpulkan data geojson untuk peta reaktif"),
+        tags$li("Mengumpulkan data bencana alam")
       )
     )
   )
@@ -3048,7 +3051,7 @@ server <- function(input, output,session){
                 column(4,
                        div(class = "profile-card",
                            div(style = "text-align: center;",
-                               img(src = profile$image, 
+                               img(src = profile$img, 
                                    style = "width: 120px; height: 120px; margin-bottom: 15px;"),
                                h4(profile$name),
                                p(profile$email, style = "color: #667eea; font-weight: 600;"),
@@ -3075,7 +3078,7 @@ server <- function(input, output,session){
                   fluidRow(
                     column(4,
                            div(class = "detail-image-container",
-                               img(src = profile$image, class = "detail-image")
+                               img(src = profile$img, class = "detail-image")
                            )
                     ),
                     column(8,
@@ -3102,6 +3105,14 @@ server <- function(input, output,session){
             )
           }
         }
+    )
+  })
+  
+  observeEvent(input$to_dashboard_button,{
+    updateTabItems(
+      session = session,
+      inputId = "sidebarMenuid",
+      selected = "dashboard-provinsi"
     )
   })
   
