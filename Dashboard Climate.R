@@ -16,34 +16,40 @@ library(here)
 library(stringr)
 library(forecast)
 library(scales)
+library(shinyWidgets)
+library(fontawesome)
+library(rmarkdown)
+library(knitr)
 
 data_dashboard <-  read_excel("Dashboard Data.xlsx")
-peta_indonesia_38provinsi <- st_read("38 Provinsi Indonesia - Provinsi.json")
-peta_indonesia_37provinsi <- st_read("37 Provinsi Indonesia - Provinsi.geojson")
-peta_indonesia_34provinsi <- st_read("34 Provinsi Indonesia - Provinsi.geojson")
+peta_indonesia_38provinsi <- st_read("38 Provinsi Indonesia - Provinsi.json") 
+peta_indonesia_37provinsi <- st_read("37 Provinsi Indonesia - Provinsi.geojson") 
+peta_indonesia_34provinsi <- st_read("34 Provinsi Indonesia - Provinsi.geojson") 
 
 peta_indonesia_37provinsi <-  peta_indonesia_37provinsi[c(-3,-4)] %>% 
-  rename(
-    PROVINSI = name
-  )
-
-peta_indonesia_37provinsi <-  peta_indonesia_37provinsi %>%  mutate(
-  PROVINSI = case_when(
-    PROVINSI == "PAPUA PEGUNUNGAN TENGAH" ~ "Papua Pegunungan",
-    TRUE ~ str_to_title(PROVINSI)
+  rename( 
+    PROVINSI = name 
   ) 
-)
+
+peta_indonesia_37provinsi <-  peta_indonesia_37provinsi %>%
+  mutate(
+    PROVINSI = case_when(
+      PROVINSI == "PAPUA PEGUNUNGAN TENGAH" ~ "Papua Pegunungan",
+      TRUE ~ str_to_title(PROVINSI)
+    )
+  ) 
 
 peta_indonesia_34provinsi <- peta_indonesia_34provinsi %>% 
-  rename(
-    PROVINSI = name
-  )
-
-peta_indonesia_34provinsi <- peta_indonesia_34provinsi %>%  mutate(
-  PROVINSI = case_when(
-    TRUE ~ str_to_title(PROVINSI)
+  rename( 
+    PROVINSI = name 
   ) 
-)
+
+peta_indonesia_34provinsi <- peta_indonesia_34provinsi %>%
+  mutate(
+    PROVINSI = case_when(
+      TRUE ~ str_to_title(PROVINSI)
+    )
+  )
 
 variabel_iklim <- c("Suhu Rata-Rata" = "suhu_rata2",
                     "Curah Hujan" = "curah_hujan",
@@ -51,7 +57,9 @@ variabel_iklim <- c("Suhu Rata-Rata" = "suhu_rata2",
                     "Kecepatan Angin" = "kecepatan_angin",
                     "Tekanan Udara" = "tekanan_udara")
 
-numeric_vars <- names(data_dashboard[c(-1,-3,-12:-17)])[sapply(data_dashboard[c(-1,-3,-12:-17)], is.numeric)]
+numeric_vars <- data_dashboard %>%
+  select(where(is.numeric), -tahun) %>% # Pilih semua kolom numerik, KECUALI kolom 'tahun'
+  names()
 
 format_label <- function(x) {
   sapply(x, function(n) {
@@ -60,6 +68,127 @@ format_label <- function(x) {
     paste(toupper(substring(words, 1,1)), tolower(substring(words, 2)), sep="", collapse=" ")
   }, USE.NAMES = FALSE)
 }
+
+# KAMUS DATA UNTUK METADATA
+metadata_kamus <- list(
+  "Total_Kejadian" = list(
+    `Nama Variabel` = "Total Kejadian",
+    Konsep = "Jumlah Kejadian Bencana",
+    Definisi = "Banyaknya kejadian peristiwa atau rangkaian peristiwa yang mengancam dan mengganggu kehidupan dan penghidupan masyarakat yang disebabkan faktor alam dan/atau faktor nonalam maupun faktor manusia, sehingga mengakibatkan timbulnya korban manusia, kerusakan lingkungan, kerugian harta benda, dan dampak psikologis.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Jumlah kejadian bencana",
+    Satuan = "Kejadian",
+    `Tipe Data` = "Integer"
+  ),
+  "Total_Korban" = list(
+    `Nama Variabel` = "Total Korban",
+    Konsep = "Korban Bencana",
+    Definisi = "Banyaknya orang yang mengalami kerusakan lingkungan, kerugian harta benda, dampak psikologis, dan meninggal dunia akibat kecelakaan, bencana, dan/atau kondisi membahayakan manusia.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Jumlah",
+    Satuan = "Jiwa",
+    `Tipe Data` = "Integer"
+  ),
+  "Banjir" = list(
+    `Nama Variabel` = "Banjir",
+    Konsep = "Kejadian Bencana Banjir",
+    Definisi = "Banjir merupakan peristiwa terendamnya suatu wilayah secara tiba-tiba karena jumlah debit air yang besar akibat terbendungnya aliran sungai. Banjir dapat terjadi karena curah hujan yang sangat tinggi namun tidak diimbangi dengan adanya saluran pembuangan air yang memadai. Banjir rob terjadi akibat adanya kenaikan muka air laut yang disebabkan oleh pasang surut air laut.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Jumlah kejadian bencana banjir",
+    Satuan = "Kejadian",
+    `Tipe Data` = "Integer"
+  ),
+  "Cuaca ekstrem" = list(
+    `Nama Variabel` = "Cuaca Ekstrem",
+    Konsep = "Kejadian Bencana Cuaca Ekstrem",
+    Definisi = "Jumlah kejadian bencana cuaca ekstrem selama satu tahun.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Jumlah kejadian bencana cuaca ekstrem",
+    Satuan = "Kejadian",
+    `Tipe Data` = "Integer"
+  ),
+  "Gelombang pasang / Abrasi" = list(
+    `Nama Variabel` = "Gelombang Pasang / Abrasi",
+    Konsep = "Kejadian bencana Gelombang Pasang/Abrasi",
+    Definisi = "Bencana Gelombang Pasang/Abrasi yang menimbulkan dampak kerugian material atau korban jiwa di suatu wilayah Indonesia satu tahun.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Jumlah kejadian bencana gelombang pasang/abrasi",
+    Satuan = "Kejadian",
+    `Tipe Data` = "Integer"
+  ),
+  "Kebakaran hutan dan lahan" = list(
+    `Nama Variabel` = "Kebakaran Hutan dan Lahan",
+    Konsep = "Kejadian Bencana Kebakaran Hutan dan Lahan",
+    Definisi = "Suatu keadaan di mana hutan dan lahan dilanda api, sehingga mengakibatkan kerusakan hutan dan lahan yang menimbulkan kerugian ekonomis dan atau nilai lingkungan.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Total",
+    Satuan = "Titik",
+    `Tipe Data` = "Integer"
+  ),
+  "Kekeringan" = list(
+    `Nama Variabel` = "Kekeringan",
+    Konsep = "Kejadian Bencana Kekeringan",
+    Definisi = "Kondisi di mana suatu wilayah mengalami defisit curah hujan yang berkepanjangan sehingga mengakibatkan kekurangan air untuk kebutuhan rumah tangga, pertanian, dan aktivitas lainnya.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Jumlah kejadian bencana kekeringan",
+    Satuan = "Unit",
+    `Tipe Data` = "Numerik"
+  ),
+  "Longsor" = list(
+    `Nama Variabel` = "Longsor",
+    Konsep = "Jumlah bencana yang terjadi akibat Tanah Longsor",
+    Definisi = "Salah satu jenis gerakan massa tanah atau batuan, ataupun percampuran keduanya, menuruni atau keluar lereng akibat terganggunya kestabilan tanah atau batuan penyusun lereng.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Jumlah kejadian bencana longsor",
+    Satuan = "Kejadian",
+    `Tipe Data` = "Integer"
+  ),
+  "suhu_rata2" = list(
+    `Nama Variabel` = "Suhu Rata-Rata",
+    Konsep = "Suhu",
+    Definisi = "Keadaan Panas Atau Dinginnya Suatu Tempat Pada Waktu Tertentu Yang Dapat Mempengaruhi Besarnya Parameter Lain Seperti Kelembaban Udara.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Rata-Rata",
+    Satuan = "Celcius",
+    `Tipe Data` = "Float"
+  ),
+  "curah_hujan" = list(
+    `Nama Variabel` = "Curah Hujan",
+    Konsep = "Jumlah curah hujan per tahun",
+    Definisi = "Curah hujan adalah ketinggian air hujan yang terkumpul dalam penakar hujan pada tempat yang datar, tidak menyerap, tidak meresap dan tidak mengalir. Tinggi air yang jatuh ini biasanya dinyatakan dengan satuan milimeter di suatu wilayah Indonesia. Curah hujan dalam 1 (satu) millimeter artinya dalam luasan satu meter persegi, tempat yang datar dapat menampung air hujan setinggi satu mm atau sebanyak satu liter.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Total",
+    Satuan = "mm/tahun",
+    `Tipe Data` = "Float"
+  ),
+  "kecepatan_angin" = list(
+    `Nama Variabel` = "Kecepatan Angin",
+    Konsep = "Kecepatan angin diukur dengan menggunakan anemometer atau dapat diklasifikasikan dengan menggunakan skala Beaufort yang didasarkan pada pengamatan pengaruh spesifik dari kecepatan angin tertentu.",
+    Definisi = "Satuan yang mengukur kecepatan aliran udara dari tekanan tinggi ke tekanan rendah.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Rata-Rata",
+    Satuan = "Knot",
+    `Tipe Data` = "Float"
+  ),
+  "kelembaban" = list(
+    `Nama Variabel` = "Kelembaban",
+    Konsep = "Kelembaban Udara",
+    Definisi = "Banyaknya Uap Air Yang Terkandung Dalam Udara Atau Atmosfer Atau Dapat Pula Diartikan Sebagai Jumlah Kadar Uap Air Yang Ada Dalam Udara.",
+    `Referensi Waktu` = "Setiap hari, sebanyak 365 hari dalam setahun",
+    Ukuran = "Rata-Rata",
+    Satuan = "Persen",
+    `Tipe Data` = "Float"
+  ),
+  "tekanan_udara" = list(
+    `Nama Variabel` = "Tekanan Udara",
+    Konsep = "Tekanan Udara",
+    Definisi = "Gaya Per Satuan Luas Yang Disebabkan Oleh Berat Udara Di Atasnya.",
+    `Referensi Waktu` = "Januari - Desember",
+    Ukuran = "Rata-Rata",
+    Satuan = "Centibar",
+    `Tipe Data` = "Float"
+  )
+)
 
 ui <- dashboardPage(
   title = "Climate Change",
@@ -139,7 +268,13 @@ ui <- dashboardPage(
       ),
       
       menuItem(
-        "Profile",
+        "Metadata",
+        tabName = "metadata",
+        icon = icon("database")
+      ),
+      
+      menuItem(
+        "Profile Tim",
         tabName = "profile",
         icon = icon("user")
       )
@@ -147,24 +282,23 @@ ui <- dashboardPage(
   ),
   footer = dashboardFooter(
     left = "Dashboard Kelompok 6 Kelas 2KS3",
-    right = format(Sys.Date(), "Copyright Politeknik Statistika STIS %Y")
+    right = format(Sys.Date(), "V1.0.0 Copyright Politeknik Statistika STIS %Y")
   ),
-  body = dashboardBody(tags$head(
-    tags$style(HTML("
+  body = dashboardBody(
+    tags$head(
+      tags$style(HTML("
       /* Hover efek tombol Menuju Dashboard */
       #to_dashboard_button:hover {
         background-color: #218838 !important;
         transform: scale(1.05);
         box-shadow: 0 8px 20px rgba(40, 167, 69, 0.6);
       }
-
       /* Hover efek tombol Informasi Lebih Lanjut */
       #more_info_button:hover {
         background-color: #218838 !important;
         color: #fff !important;
         transform: scale(1.05);
       }
-
       #to_dashboard_button, #more_info_button {
         cursor: pointer;
       }
@@ -181,520 +315,836 @@ ui <- dashboardPage(
         border-radius: 4px;
       }
     "))
-  ),
-  
-  tabItems(
-    tabItem(
-      tabName = "home",
-      box(
-        title = NULL,
-        width = 12,
-        solidHeader = TRUE,
-        status = "primary",
-        div(
-          class = "text-center",
-          style = "padding: 40px 20px; background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
-             border-radius: 15px; color: white; margin: -15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);",
-          
-          div(
-            style = "margin-bottom: 30px;",
-            icon("cloud-sun", style = "font-size: 48px; color: #ffd700; margin-bottom: 15px;"),
-            h1("Selamat Datang!", 
-               style = "font-family: 'Arial', sans-serif; font-weight: bold; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);")
-          ),
-          
-          div(
-            style = "margin-bottom: 35px; max-width: 800px; margin-left: auto; margin-right: auto;",
-            p("Dashboard ini menyediakan visualisasi perubahan iklim di Indonesia dan dampaknya terhadap korban bencana alam dalam kurun waktu 2020–2024",
-              style = "font-size: 18px; line-height: 1.6; color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);")
-          ),
-          
-          div(
-            style = "margin-bottom: 20px;",
-            actionButton("to_dashboard_button", 
-                         "Menuju Dashboard", 
-                         class = "btn-lg",
-                         style = "background: #28a745; border: none; padding: 15px 40px; 
-                           font-size: 18px; font-weight: bold; border-radius: 25px; 
-                           box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4); 
-                           transition: all 0.3s ease; color: white;")
-          ),
-          
-          div(
-            style = "margin-top: 15px;",
-            actionButton("more_info_button", 
-                         "Informasi Lebih Lanjut", 
-                         icon = icon("info-circle"), 
-                         style = "background:none ; border: 2px solid white;
-                           color: white; padding: 10px 25px; border-radius: 20px; 
-                           transition: all 0.3s ease;")
-          ),
-          
-          br(),
-          uiOutput("more_info_ui")
-        )
-      )
     ),
-    
-    tabItem(
-      tabName = "dashboard-provinsi",
-      
-      fluidRow(
-        column(
-          width = 4,
-          selectInput(
-            inputId = "provinsi_terpilih",
-            label = "Pilih Provinsi :",
-            choices = c("Indonesia", unique(data_dashboard$provinsi)),
-            selected = "Indonesia",
-            width = "100%"
-          )
-        ),
-        
-        column(
-          width = 4,
-          sliderInput(
-            inputId = "rentang_tahun_provinsi",
-            label = "Pilih Rentang Tahun :",
-            min = min(data_dashboard$tahun),
-            max = max(data_dashboard$tahun),
-            value = c(min(data_dashboard$tahun), max(data_dashboard$tahun)),
-            sep = ""
-          )
-        ) 
-      ), 
-      
-      
-      fluidRow(
-        infoBoxOutput("suhu_box", width = 4),
-        infoBoxOutput("Total_Korban_box", width = 4),
-        infoBoxOutput("jumlah_bencana_box", width = 4)
-      ),
-      
-      
-      fluidRow(
+    tabItems(
+      tabItem(
+        tabName = "home",
         box(
-          title = "Trend Korban Jiwa per Tahun",
-          status = "danger",
+          title = NULL,
+          width = 12,
           solidHeader = TRUE,
-          width = 6,
-          plotlyOutput("trend_korban_plot")
-        ),
-        box(
-          title = "Trend Jumlah Bencana per Tahun",
-          status = "warning",
-          solidHeader = TRUE,
-          width = 6,
-          plotlyOutput("trend_bencana_plot")
-        )
-      ),
-      
-      fluidRow(
-        box(
-          title = "Trend Iklim per Tahun",
-          status = "gray",
-          solidHeader = TRUE,
-          width = 6,
-          height = "525px",
-          selectInput(
-            inputId = "variabel_iklim",
-            label = "Pilih Variabel Iklim : ",
-            choices = variabel_iklim,
-            selected = "Suhu Rata-Rata"
-          ),
-          plotlyOutput("trend_iklim_plot")
-        ),
-        box(
-          title = "Bencana Alam yang Memakan Korban Jiwa Terbanyak",
           status = "primary",
-          solidHeader = TRUE,
-          width = 6,
-          height = "525px",
-          plotlyOutput("top_bencana_plot", height = "450px")
-        )
-      ),
-      
-      fluidRow(
-        box(
-          title = "Proporsi Sebaran Kejadian Bencana Alam",
-          status = "success",
-          solidHeader = TRUE,
-          width = 6,
-          height = "500px",
-          plotlyOutput("pie_bencana_plot",height = "450px")
-        ),
-        box(
-          title = "Proporsi Sebaran Korban Bencana Alam",
-          status = "success",
-          solidHeader = TRUE,
-          width = 6,
-          height = "500px",
-          plotlyOutput("pie_korban_plot",height = "450px")
-        ),
-      )
-    ),
-    
-    tabItem(
-      tabName = "dashboard-bencana",
-      fluidRow(
-        column(
-          width = 4,
-          selectInput(
-            inputId = "bencana_terpilih",
-            label = "Pilih Bencana :",
-            choices = c("Banjir", "Cuaca ekstrem", "Gelombang pasang / Abrasi", "Kebakaran hutan dan lahan", "Kekeringan", "Longsor"),
-            selected = "Banjir",
-            width = "100%"
-          )
-        ),
-        
-        column(
-          width = 4,
-          sliderInput(
-            inputId = "rentang_tahun_bencana",
-            label = "Pilih Rentang Tahun :",
-            min = min(data_dashboard$tahun),
-            max = max(data_dashboard$tahun),
-            value = c(min(data_dashboard$tahun), max(data_dashboard$tahun)),
-            sep = ""
-          )
-        ) 
-      ),
-      
-      fluidRow(
-        infoBoxOutput("korban_spesifik_box", width = 4),
-        infoBoxOutput("provinsi_terdampak_box", width = 4),
-        infoBoxOutput("bencana_spesifik_box", width = 4)
-      ),
-      
-      fluidRow(
-        column(
-          width = 6,
-          uiOutput("trend_korban_spesifik_box")
-        ),
-        column(
-          width = 6,
-          uiOutput("trend_bencana_spesifik_box")
-        )
-      ),
-      
-      fluidRow(
-        column(
-          width = 12,
-          uiOutput("top_provinsi_box")
-        )
-      )
-    ),
-    
-    tabItem(
-      tabName = "peta-bencana",
-      fluidRow(
-        column(
-          width = 4,
-          selectInput(
-            inputId = "peta_bencana_terpilih",
-            label = "Pilih Bencana :",
-            choices = c("Banjir", "Cuaca ekstrem", "Gelombang pasang / Abrasi", "Kebakaran hutan dan lahan", "Kekeringan", "Longsor"),
-            selected = "Banjir",
-            width = "100%"
-          )
-        ),
-        
-        column(
-          width = 4,
-          selectInput(
-            inputId = "tahun_peta_bencana",
-            label = "Pilih Tahun :",
-            choices = unique(data_dashboard$tahun),
-            selected = 2024,
-            width = "100%"
-          )
-        ) 
-      ),
-      
-      fluidRow(
-        column(
-          width = 12,
-          uiOutput("peta_bencana_box")
-        )
-      )
-    ),
-    
-    tabItem(
-      tabName = "peta-iklim",
-      fluidRow(
-        column(
-          width = 4,
-          selectInput(
-            inputId = "peta_iklim_terpilih",
-            label = "Pilih Variabel Iklim : ",
-            choices = variabel_iklim,
-            selected = "Suhu Rata-Rata",
-            width = "100%"
-          ),
-        ),
-        
-        column(
-          width = 4,
-          selectInput(
-            inputId = "tahun_peta_iklim",
-            label = "Pilih Tahun :",
-            choices = unique(data_dashboard$tahun),
-            selected = 2024,
-            width = "100%"
-          )
-        ) 
-      ),
-      
-      fluidRow(
-        column(
-          width = 12,
-          uiOutput("peta_iklim_box")
-        )
-      )
-    ),
-    
-    tabItem(
-      tabName = "analisis-korelasi",
-      fluidRow(
-        box(
-          width = 4, status = "primary", solidHeader = TRUE,
-          title = "Pilih Variabel (≥2)",
-          checkboxGroupInput(
-            inputId  = "vars_korelasi",
-            label    = NULL,
-            choices  = setNames(numeric_vars, format_label(numeric_vars)),
-            selected = numeric_vars[1:2]
-          )
-        ),
-        box(
-          width = 8, status = "info", solidHeader = TRUE,
-          title = "Scatter‑matrix",
-          plotOutput("scatterplot")
-        )
-      ),
-      
-      fluidRow(
-        box(
-          width = 12, status = "success", solidHeader = TRUE,
-          title = "Matriks Korelasi",
-          DTOutput("cor_matrix")
-        )
-      )
-    ),
-    
-    tabItem(
-      tabName = "analisis-regresi",
-      fluidRow(
-        column(
-          width = 4,
-          box(
-            width = NULL, height = "125px", status = "primary", solidHeader = TRUE,
-            title = "Pilih Provinsi",
-            selectInput(
-              inputId  = "prov_var",
-              label    = "Provinsi:",
-              choices = c(unique(data_dashboard$provinsi)),
-              selected = "Aceh",
-            )
-          ),
-          box(
-            width = NULL, height = "210px", status = "primary", solidHeader = TRUE,
-            title = "Pilih Variabel",
-            selectInput(
-              inputId  = "dep_var",
-              label    = "Variabel Dependen (Y):",
-              choices  = setNames(numeric_vars[c(-2,-9:-13)], format_label(numeric_vars)[c(-2,-9:-13)]),
-              selected = ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])
+          div(
+            class = "text-center",
+            style = "padding: 40px 20px; background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+             border-radius: 15px; color: white; margin: -15px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);",
+            
+            div(
+              style = "margin-bottom: 30px;",
+              icon("cloud-sun", style = "font-size: 48px; color: #ffd700; margin-bottom: 15px;"),
+              h1("Selamat Datang!",
+                 style = "font-family: 'Arial', sans-serif; font-weight: bold; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);")
             ),
-            selectizeInput(
-              inputId  = "indep_vars",
-              label    = "Variabel Independen (X):",
-              choices  = setNames(setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])),
-                                  format_label(setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])))),
-              selected = setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1]))[1:3],
-              multiple = TRUE,
-              options  = list(
-                plugins = list("remove_button"),
-                maxItems = NULL,
-                dropdownMaxHeight = "300px"
+            
+            div(
+              style = "margin-bottom: 35px; max-width: 800px; margin-left: auto; margin-right: auto;",
+              p("Dashboard ini menyediakan visualisasi perubahan iklim di Indonesia dan dampaknya terhadap korban bencana alam dalam kurun waktu 2020–2024",
+                style = "font-size: 18px; line-height: 1.6; color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.3);")
+            ),
+            
+            div(
+              style = "margin-bottom: 20px;",
+              actionButton("to_dashboard_button",
+                           "Menuju Dashboard",
+                           class = "btn-lg",
+                           style = "background: #28a745; border: none; padding: 15px 40px;
+                            font-size: 18px; font-weight: bold; border-radius: 25px;
+                            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+                            transition: all 0.3s ease; color: white;")
+            ),
+            
+            div(
+              style = "margin-top: 15px;",
+              actionButton("more_info_button",
+                           "Informasi Lebih Lanjut",
+                           icon = icon("info-circle"),
+                           style = "background:none ; border: 2px solid white;
+                           color: white; padding: 10px 25px; border-radius: 20px;
+                            transition: all 0.3s ease;")
+            ),
+            
+            br(),
+            uiOutput("more_info_ui")
+          )
+        )
+      ),
+      
+      tabItem(
+        tabName = "dashboard-provinsi",
+        fluidRow(
+          
+          column(width = 12,
+                 box(
+                   title = tags$strong("Petunjuk Penggunaan Halaman"),
+                   status = "info",
+                   width = 12,
+                   icon = icon("book-open"),
+                   p("Halaman ini menampilkan ringkasan data iklim dan bencana untuk wilayah yang Anda pilih. Ikuti langkah-langkah berikut:"),
+                   tags$ol(
+                     tags$li(tags$strong("Pilih Provinsi:"), " Gunakan dropdown 'Pilih Provinsi' untuk melihat data spesifik suatu provinsi, atau pilih 'Indonesia' untuk melihat data agregat nasional."),
+                     tags$li(tags$strong("Atur Rentang Tahun:"), " Geser slider 'Pilih Rentang Tahun' untuk memfokuskan analisis pada periode waktu yang Anda inginkan."),
+                     tags$li(tags$strong("Analisis Visual:"), " Amati perubahan pada Info Box, grafik tren, dan diagram proporsi yang akan diperbarui secara otomatis sesuai pilihan Anda.")
+                   )
+                 )
+          )
+        ),
+        box(width=12,
+            title=strong("Dashboard Menurut Provinsi"),
+            fluidRow(
+              column(
+                width = 4,
+                selectInput(
+                  inputId = "provinsi_terpilih",
+                  label = "Pilih Provinsi :",
+                  choices  = unique(data_dashboard$provinsi),
+                  selected = "Aceh",
+                  width = "100%"
+                )
+              ),
+              
+              column(
+                width = 4,
+                sliderInput(
+                  inputId = "rentang_tahun_provinsi",
+                  label = "Pilih Rentang Tahun :",
+                  min = min(data_dashboard$tahun),
+                  max = max(data_dashboard$tahun),
+                  value = c(min(data_dashboard$tahun), max(data_dashboard$tahun)),
+                  sep = ""
+                )
+              )
+            ),
+            
+            fluidRow(
+              infoBoxOutput("suhu_box", width = 4),
+              infoBoxOutput("Total_Korban_box", width = 4),
+              infoBoxOutput("jumlah_bencana_box", width = 4)
+            ),
+            
+            fluidRow(
+              box(
+                title = "Trend Korban Jiwa per Tahun",
+                status = "danger",
+                solidHeader = TRUE,
+                width = 6,
+                plotlyOutput("trend_korban_plot")
+              ),
+              box(
+                title = "Trend Jumlah Bencana per Tahun",
+                status = "warning",
+                solidHeader = TRUE,
+                width = 6,
+                plotlyOutput("trend_bencana_plot")
+              )
+            ),
+            
+            fluidRow(
+              box(
+                title = "Trend Iklim per Tahun",
+                status = "gray",
+                solidHeader = TRUE,
+                width = 6,
+                height = "525px",
+                selectInput(
+                  inputId = "variabel_iklim",
+                  label = "Pilih Variabel Iklim : ",
+                  choices = variabel_iklim,
+                  selected = "Suhu Rata-Rata"
+                ),
+                plotlyOutput("trend_iklim_plot")
+              ),
+              box(
+                title = "Bencana Alam yang Memakan Korban Jiwa Terbanyak",
+                status = "primary",
+                solidHeader = TRUE,
+                width = 6,
+                height = "525px",
+                plotlyOutput("top_bencana_plot", height = "450px")
+              )
+            ),
+            
+            fluidRow(
+              box(
+                title = "Proporsi Sebaran Kejadian Bencana Alam",
+                status = "success",
+                solidHeader = TRUE,
+                width = 6,
+                height = "500px",
+                plotlyOutput("pie_bencana_plot",height = "450px")
+              ),
+              box(
+                title = "Proporsi Sebaran Korban Bencana Alam",
+                status = "success",
+                solidHeader = TRUE,
+                width = 6,
+                height = "500px",
+                plotlyOutput("pie_korban_plot",height = "450px")
+              ),
+            ),
+            # FITUR UNDUH LAPORAN DASHBOARD PROVINSI
+            fluidRow(
+              box(
+                title = "Unduh Laporan",
+                status = "info",
+                solidHeader = TRUE,
+                width = 12,
+                div(
+                  style = "text-align: center; padding: 20px;",
+                  p("Unduh laporan lengkap analisis dashboard menurut provinsi dalam format PDF"),
+                  downloadButton("download_laporan_provinsi", 
+                                 "Unduh Laporan Dashboard Provinsi", 
+                                 class = "btn-primary btn-lg",
+                                 style = "margin: 10px;")
+                )
               )
             )
-          ),
+        )
+      ),
+      
+      tabItem(
+        tabName = "dashboard-bencana",
+        fluidRow(
           
-          # Box untuk Transformasi Variabel
-          box(
-            width = NULL, status = "warning", solidHeader = TRUE,
-            title = "Transformasi Variabel",
-            
-            # Transformasi Y (Variabel Dependen)
-            h5("Transformasi (Y) : ", style = "color: #d9534f; font-weight: bold;"),
-            br(),
-            radioButtons(
-              inputId = "trans_dep",
-              label = NULL,
-              choices = list(
-                "Tanpa Transformasi" = "none",
-                "Logaritma Natural (ln)" = "log",
-                "Logaritma 10 (log10)" = "log10",
-                "Akar Kuadrat (sqrt)" = "sqrt",
-                "Kuadrat (x²)" = "square",
-                "Kubik (x³)" = "cubic",
-                "Reciprocal (1/x)" = "reciprocal",
-                "Box-Cox" = "boxcox",
-                "Yeo-Johnson" = "yeojohnson",
-                "Inverse Hyperbolic Sine" = "asinh",
-                "Logit" = "logit",
-                "Probit" = "probit"
+          column(width = 12,
+                 box(
+                   title = tags$strong("Petunjuk Penggunaan Halaman"),
+                   status = "info",
+                   width = 12,
+                   icon = icon("book-open"),
+                   p("Halaman ini menampilkan ringkasan data jenis bencana yang Anda pilih. Ikuti langkah-langkah berikut:"),
+                   tags$ol(
+                     tags$li(tags$strong("Pilih Bencana:"), " Gunakan dropdown 'Pilih Bencana' untuk melihat data spesifik suatu jenis bencana."),
+                     tags$li(tags$strong("Atur Rentang Tahun:"), " Geser slider 'Pilih Rentang Tahun' untuk memfokuskan analisis pada periode waktu yang Anda inginkan."),
+                     tags$li(tags$strong("Analisis Visual:"), " Amati perubahan pada Info Box, grafik tren, dan diagram batang yang akan diperbarui secara otomatis sesuai pilihan Anda.")
+                   )
+                 )
+          )
+        ),
+        box(width=12,
+            title = strong("Dashboard Menurut Jenis Bencana"),
+            fluidRow(
+              
+              column(
+                width = 4,
+                selectInput(
+                  inputId = "bencana_terpilih",
+                  label = "Pilih Bencana :",
+                  choices = c("Banjir", "Cuaca ekstrem", "Gelombang pasang / Abrasi", "Kebakaran hutan dan lahan", "Kekeringan", "Longsor"),
+                  selected = "Banjir",
+                  width = "100%"
+                )
               ),
-              selected = "none",
-              inline = FALSE
+              
+              column(
+                width = 4,
+                sliderInput(
+                  inputId = "rentang_tahun_bencana",
+                  label = "Pilih Rentang Tahun :",
+                  min = min(data_dashboard$tahun),
+                  max = max(data_dashboard$tahun),
+                  value = c(min(data_dashboard$tahun), max(data_dashboard$tahun)),
+                  sep = ""
+                )
+              )
             ),
             
-            br(),
+            fluidRow(
+              infoBoxOutput("korban_spesifik_box", width = 4),
+              infoBoxOutput("provinsi_terdampak_box", width = 4),
+              infoBoxOutput("bencana_spesifik_box", width = 4)
+            ),
             
-            # Transformasi X (Variabel Independen)
-            h5("Transformasi (X) : ", style = "color: #5bc0de; font-weight: bold;"),
-            br(),
-            radioButtons(
-              inputId = "trans_indep",
-              label = NULL,
-              choices = list(
-                "Tanpa Transformasi" = "none",
-                "Logaritma Natural (ln)" = "log",
-                "Logaritma 10 (log10)" = "log10",
-                "Akar Kuadrat (sqrt)" = "sqrt",
-                "Kuadrat (x²)" = "square",
-                "Kubik (x³)" = "cubic",
-                "Reciprocal (1/x)" = "reciprocal",
-                "Box-Cox" = "boxcox",
-                "Yeo-Johnson" = "yeojohnson",
-                "Inverse Hyperbolic Sine" = "asinh",
-                "Standardisasi (z-score)" = "scale",
-                "Min-Max Normalisasi" = "minmax"
+            fluidRow(
+              column(
+                width = 6,
+                uiOutput("trend_korban_spesifik_box")
               ),
-              selected = "none",
-              inline = FALSE
+              column(
+                width = 6,
+                uiOutput("trend_bencana_spesifik_box")
+              )
             ),
             
-            br(),
-            
-            # Tombol untuk reset transformasi
-            actionButton(
-              inputId = "reset_transform",
-              label = "Reset Transformasi",
-              icon = icon("refresh"),
-              class = "btn-warning",
-              style = "width: 100%;"
+            fluidRow(
+              column(
+                width = 12,
+                uiOutput("top_provinsi_box")
+              )
+            ),
+            # FITUR UNDUH LAPORAN DASHBOARD BENCANA
+            fluidRow(
+              box(
+                title = "Unduh Laporan",
+                status = "info",
+                solidHeader = TRUE,
+                width = 12,
+                div(
+                  style = "text-align: center; padding: 20px;",
+                  p("Unduh laporan lengkap analisis dashboard menurut jenis bencana dalam format PDF"),
+                  downloadButton("download_laporan_bencana", 
+                                 "Unduh Laporan Dashboard Bencana", 
+                                 class = "btn-primary btn-lg",
+                                 style = "margin: 10px;")
+                )
+              )
+            )
+        )
+      ),
+      
+      tabItem(
+        tabName = "peta-bencana",
+        fluidRow(
+          
+          column(width = 12,
+                 box(
+                   title = tags$strong("Petunjuk Penggunaan Halaman"),
+                   status = "info",
+                   width = 12,
+                   icon = icon("book-open"),
+                   p("Halaman ini menampilkan peta sebaran bencana yang Anda pilih di tiap provinsi Indonesia. Ikuti langkah-langkah berikut:"),
+                   tags$ol(
+                     tags$li(tags$strong("Pilih Bencana:"), " Gunakan dropdown 'Pilih Bencana' untuk melihat data spesifik suatu jenis bencana."),
+                     tags$li(tags$strong("Pilih Tahun:"), " Gunakan dropdown 'Pilih Tahun' untuk memfokuskan analisis pada periode waktu yang Anda inginkan."),
+                     tags$li(tags$strong("Analisis Visual:"), " Amati sebaran data melalui peta cloropeth sesuai pilihan Anda tadi.")
+                   )
+                 )
+          )
+        ),
+        box(width=12,
+            title =strong ("Peta Sebaran Bencana di Indonesia"),
+            fluidRow(
+              column(
+                width = 4,
+                selectInput(
+                  inputId = "peta_bencana_terpilih",
+                  label = "Pilih Bencana :",
+                  choices = c("Banjir", "Cuaca ekstrem", "Gelombang pasang / Abrasi", "Kebakaran hutan dan lahan", "Kekeringan", "Longsor"),
+                  selected = "Banjir",
+                  width = "100%"
+                )
+              ),
+              
+              column(
+                width = 4,
+                selectInput(
+                  inputId = "tahun_peta_bencana",
+                  label = "Pilih Tahun :",
+                  choices = unique(data_dashboard$tahun),
+                  selected = 2024,
+                  width = "100%"
+                )
+              )
             ),
             
-            br(), br(),
+            fluidRow(
+              column(
+                width = 12,
+                uiOutput("peta_bencana_box")
+              )
+            )
+        )
+      ),
+      
+      tabItem(
+        tabName = "peta-iklim",
+        fluidRow(
+          column(width = 12,
+                 box(
+                   title = tags$strong("Petunjuk Penggunaan Halaman"),
+                   status = "info",
+                   width = 12,
+                   icon = icon("book-open"),
+                   p("Halaman ini menampilkan peta sebaran perubahan iklim yang Anda pilih di tiap provinsi Indonesia. Ikuti langkah-langkah berikut:"),
+                   tags$ol(
+                     tags$li(tags$strong("Pilih Variabel Iklim:"), " Gunakan dropdown 'Pilih Variabel Iklim' untuk melihat data spesifik suatu jenis variabel iklim"),
+                     tags$li(tags$strong("Pilih Tahun:"), " Gunakan dropdown 'Pilih Tahun' untuk memfokuskan analisis pada periode waktu yang Anda inginkan."),
+                     tags$li(tags$strong("Analisis Visual:"), " Amati sebaran data melalui peta cloropeth sesuai pilihan Anda tadi.")
+                   )
+                 )
+          )
+        ),
+        box(width=12,
+            title=strong("Peta Sebaran Perubahan Iklim di Indonesia"),
+            fluidRow(
+              column(
+                width = 4,
+                selectInput(
+                  inputId = "peta_iklim_terpilih",
+                  label = "Pilih Variabel Iklim : ",
+                  choices = variabel_iklim,
+                  selected = "Suhu Rata-Rata",
+                  width = "100%"
+                ),
+              ),
+              
+              column(
+                width = 4,
+                selectInput(
+                  inputId = "tahun_peta_iklim",
+                  label = "Pilih Tahun :",
+                  choices = unique(data_dashboard$tahun),
+                  selected = 2024,
+                  width = "100%"
+                )
+              )
+            ),
             
-            # Informasi tambahan
-            div(
-              style = "background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 12px;",
-              HTML("<strong>Tips:</strong><br/>
+            fluidRow(
+              column(
+                width = 12,
+                uiOutput("peta_iklim_box")
+              )
+            )
+        )
+      ),
+      
+      tabItem(
+        tabName = "analisis-korelasi",
+        fluidRow(
+          column(width = 12,
+                 box(
+                   title = tags$strong("Petunjuk Penggunaan Halaman"),
+                   status = "info",
+                   width = 12,
+                   icon = icon("book-open"),
+                   p("Halaman ini menampilkan analisis korelasi hubungan antar variabel data tiap provinsi di Indonesia. Ikuti langkah-langkah berikut:"),
+                   tags$ol(
+                     tags$li(tags$strong("Pilih Provinsi:"), " Gunakan dropdown 'Pilih Provinsi' untuk melakukan analisis data spesifik suatu provinsi"),
+                     tags$li(tags$strong("Pilih Variabel:"), " Gunakan dropdown 'Pilih Variabel' untuk memasukkan variabel tambahan yang Anda ingin uji korelasinya."),
+                     tags$li(tags$strong("Analisis Statistik:"), " Amati visual dalam bentuk scatter-matrix dan hasil uji statistik tabel korelasi, serta interpretasi di provinsi dan variabel yang Anda pilih.")
+                   )
+                 )
+          )
+        ),
+        box(width=12,
+            title=strong("Analisis Korelasi Antar Variabel"),
+            
+            fluidRow(
+              column(
+                width = 4,
+                
+                # Box Pilih Provinsi
+                box(
+                  width = NULL, height = "125px", status = "primary", solidHeader = TRUE,
+                  title = "Pilih Provinsi",
+                  selectInput(
+                    inputId  = "prov_korelasi",
+                    label    = "Provinsi:",
+                    choices  = unique(data_dashboard$provinsi),
+                    selected = "Aceh"
+                  )
+                ),
+                
+                # Box Pilih Variabel
+                box(
+                  width = NULL, height = "210px", status = "primary", solidHeader = TRUE,
+                  title = "Pilih Variabel",
+                  selectizeInput(
+                    inputId  = "vars_korelasi",
+                    label    = "Variabel Numerik (≥2):",
+                    choices  = setNames(numeric_vars, format_label(numeric_vars)),
+                    selected = numeric_vars[1:2],
+                    multiple = TRUE,
+                    options  = list(
+                      plugins = list("remove_button"),
+                      maxItems = NULL,
+                      dropdownMaxHeight = "300px"
+                    )
+                  )
+                )
+              ),
+              
+              column(
+                width = 8,
+                
+                # Scatter Matrix
+                box(
+                  width = NULL, height = "500px", status = "info", solidHeader = TRUE,
+                  title = "Scatter‑Matrix",
+                  plotOutput("scatterplot", height = "440px")
+                )
+              )
+            ),
+            
+            fluidRow(
+              # Matriks Korelasi
+              box(
+                width = 12, status = "success", solidHeader = TRUE,
+                title = "Matriks Korelasi",
+                DTOutput("cor_matrix")
+              )
+            ),
+            fluidRow(
+              # Interpretasi Korelasi
+              box(
+                width = 12, status = "info", solidHeader = TRUE,
+                title = "Interpretasi Korelasi",
+                verbatimTextOutput("interpretasi_korelasi")
+              )
+            ),
+            # FITUR UNDUH LAPORAN ANALISIS KORELASI
+            fluidRow(
+              box(
+                title = "Unduh Laporan",
+                status = "info",
+                solidHeader = TRUE,
+                width = 12,
+                div(
+                  style = "text-align: center; padding: 20px;",
+                  p("Unduh laporan lengkap analisis korelasi dalam format PDF"),
+                  downloadButton("download_laporan_korelasi", 
+                                 "Unduh Laporan Analisis Korelasi", 
+                                 class = "btn-primary btn-lg",
+                                 style = "margin: 10px;")
+                )
+              )
+            )
+        )
+      ),
+      
+      tabItem(
+        tabName = "analisis-regresi",
+        fluidRow(
+          column(width = 12,
+                 box(
+                   title = tags$strong("Petunjuk Penggunaan Halaman"),
+                   status = "info",
+                   width = 12,
+                   icon = icon("book-open"),
+                   p("Halaman ini menampilkan analisis korelasi hubungan antar variabel data tiap provinsi di Indonesia. Ikuti langkah-langkah berikut:"),
+                   tags$ol(
+                     tags$li(tags$strong("Pilih Provinsi:"), " Gunakan dropdown 'Pilih Provinsi' untuk melakukan analisis data spesifik suatu provinsi"),
+                     tags$li(tags$strong("Pilih Variabel Dependen (Y):"), " Gunakan dropdown 'Pilih Variabel Dependen' untuk memasukkan variabel terikat (Y) yang ingin diteliti."),
+                     tags$li(tags$strong("Pilih Variabel Independen (X):"), " Gunakan dropdown 'Pilih Variabel Independen' untuk memasukkan variabel bebas lain (X) yang ingin diuji signifikansi terhadap variabel terikat yang akan diteliti."),
+                     tags$li(tags$strong("Pilih Transformasi Variabel:"), " Gunakan radio button 'Transformasi Y' untuk memilih transformasi data variabel terikat (Y) dan 'Transformasi X' untuk memilih transformasi data variabel bebas (X) untuk melihat analisis statistik dengan metode berbeda."),
+                     tags$li(tags$strong("Analisis Statistik:"), " Lihat ringkasan model regresi untuk melihat model regresi yang terbentuk dari variabel bebas dan terikat yang sudah dipilih.
+                             Lihat statistik deskriptif untuk melihat ukuran pemusatan data.
+                             Lihat diagnostik plot untuk melihat uji kenormalan data lewat visual."),
+                     tags$li(tags$strong("Ringkasan Pemeriksaan Uji Model Regresi:"), " Lihat pemeriksaan asumsi klasik, yaitu normalitas, homoskedastisitas, non-autokorelasi, dan non-multikolinieritas.
+                             Jika ada asumsi yang terlanggar taksiran parameter masih dapat dilakukan, tetapi penaksir yang diperoleh bukanlah penaksir terbaik.
+                             Penaksir yang memenuhi asumsi klasik akan bersifat BLUE (best linear unbiased estimator) yaitu penaksir linier, takbias terbaik karena memiliki varians minimum. "),
+                     
+                   )
+                 )
+          )
+        ),
+        box(width=12,
+            title=strong("Analisis Inferensia"),
+            fluidRow(
+              column(
+                width = 4,
+                box(
+                  width = NULL, height = "125px", status = "primary", solidHeader = TRUE,
+                  title = "Pilih Provinsi",
+                  selectInput(
+                    inputId  = "prov_var",
+                    label    = "Provinsi:",
+                    choices = c(unique(data_dashboard$provinsi)),
+                    selected = "Aceh",
+                  )
+                ),
+                box(
+                  width = NULL, height = "210px", status = "primary", solidHeader = TRUE,
+                  title = "Pilih Variabel",
+                  selectInput(
+                    inputId  = "dep_var",
+                    label    = "Variabel Dependen (Y):",
+                    choices  = setNames(numeric_vars[c(-2,-9:-13)], format_label(numeric_vars)[c(-2,-9:-13)]),
+                    selected = ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])
+                  ),
+                  selectizeInput(
+                    inputId  = "indep_vars",
+                    label    = "Variabel Independen (X):",
+                    choices  = setNames(setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])),
+                                        format_label(setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1])))),
+                    selected = setdiff(numeric_vars, ifelse("Banjir" %in% numeric_vars, "Banjir", numeric_vars[1]))[1:3],
+                    multiple = TRUE,
+                    options  = list(
+                      plugins = list("remove_button"),
+                      maxItems = NULL,
+                      dropdownMaxHeight = "300px"
+                    )
+                  )
+                ),
+                
+                # Box untuk Transformasi Variabel
+                box(
+                  width = NULL, status = "warning", solidHeader = TRUE,
+                  title = "Transformasi Variabel",
+                  
+                  # Transformasi Y (Variabel Dependen)
+                  h5("Transformasi (Y) : ", style = "color: #d9534f; font-weight: bold;"),
+                  br(),
+                  radioButtons(
+                    inputId = "trans_dep",
+                    label = NULL,
+                    choices = list(
+                      "Tanpa Transformasi" = "none",
+                      "Logaritma Natural (ln)" = "log",
+                      "Logaritma 10 (log10)" = "log10",
+                      "Akar Kuadrat (sqrt)" = "sqrt",
+                      "Kuadrat (x²)" = "square",
+                      "Kubik (x³)" = "cubic",
+                      "Reciprocal (1/x)" = "reciprocal",
+                      "Box-Cox" = "boxcox",
+                      "Yeo-Johnson" = "yeojohnson",
+                      "Inverse Hyperbolic Sine" = "asinh",
+                      "Logit" = "logit",
+                      "Probit" = "probit"
+                    ),
+                    selected = "none",
+                    inline = FALSE
+                  ),
+                  
+                  br(),
+                  
+                  # Transformasi X (Variabel Independen)
+                  h5("Transformasi (X) : ", style = "color: #5bc0de; font-weight: bold;"),
+                  br(),
+                  radioButtons(
+                    inputId = "trans_indep",
+                    label = NULL,
+                    choices = list(
+                      "Tanpa Transformasi" = "none",
+                      "Logaritma Natural (ln)" = "log",
+                      "Logaritma 10 (log10)" = "log10",
+                      "Akar Kuadrat (sqrt)" = "sqrt",
+                      "Kuadrat (x²)" = "square",
+                      "Kubik (x³)" = "cubic",
+                      "Reciprocal (1/x)" = "reciprocal",
+                      "Box-Cox" = "boxcox",
+                      "Yeo-Johnson" = "yeojohnson",
+                      "Inverse Hyperbolic Sine" = "asinh",
+                      "Standardisasi (z-score)" = "scale",
+                      "Min-Max Normalisasi" = "minmax"
+                    ),
+                    selected = "none",
+                    inline = FALSE
+                  ),
+                  
+                  br(),
+                  
+                  # Tombol untuk reset transformasi
+                  actionButton(
+                    inputId = "reset_transform",
+                    label = "Reset Transformasi",
+                    icon = icon("refresh"),
+                    class = "btn-warning",
+                    style = "width: 100%;"
+                  ),
+                  
+                  br(), br(),
+                  
+                  # Informasi tambahan
+                  div(
+                    style = "background-color: #f8f9fa; padding: 10px; border-radius: 5px; font-size: 12px;",
+                    HTML("<strong>Tips:</strong><br/>
                • Transformasi variabel dapat dilakukan untuk menemukan model yang cocok serta memenuhi asumsi<br/>
                • Gunakan <strong>Box-Cox/Yeo-Johnson</strong> untuk normalitas<br/>
                • Gunakan <strong>reciprocal</strong> untuk hubungan non-linear<br/>
                • Gunakan <strong>standardisasi</strong> jika skala X berbeda jauh")
+                  )
+                )
+              ),
+              
+              column(
+                width = 8,
+                box(
+                  width = NULL, status = "info", solidHeader = TRUE,
+                  title = "Ringkasan Model Regresi",
+                  verbatimTextOutput("model_summary")
+                ),
+                
+                box(
+                  width = 12, status = "info", solidHeader = TRUE,
+                  title = "Interpretasi Regresi",
+                  verbatimTextOutput("interpretasi_regresi")
+                ),
+                
+                box(
+                  width = NULL, status = "success", solidHeader = TRUE,
+                  title = "Statistik Deskriptif",
+                  tagList(
+                    verbatimTextOutput("descriptive_stats"),
+                    verbatimTextOutput("inter_descriptive_stats")
+                  )
+                )
+              )
+            ),
+            
+            fluidRow(
+              box(
+                width = 12, status = "warning", solidHeader = TRUE,
+                title = "Diagnostik Plot",
+                plotOutput("diagnostic_plot")
+              )
             )
+        ),
+        box(width=12,
+            title=strong("Pemeriksaan Asumsi Klasik Model dan Multikolinearitas RLB"),
+            fluidRow(
+              box(
+                width = 12, status = "danger", solidHeader = TRUE,
+                title = "Ringkasan Pemeriksaan Uji Model Regresi",
+                verbatimTextOutput("overall_check")
+              )
+            ),
+            
+            fluidRow(
+              # Row 1: Homoskedastisitas dan Normalitas
+              column(6,
+                     box(
+                       width = NULL, status = "danger", solidHeader = TRUE,
+                       title = "Uji Homoskedastisitas",
+                       verbatimTextOutput("assumption1")
+                     )
+              ),
+              column(6,
+                     box(
+                       width = NULL, status = "danger", solidHeader = TRUE,
+                       title = "Uji Normalitas Residual",
+                       verbatimTextOutput("assumption2")
+                     )
+              )
+            ),
+            fluidRow(
+              # Row 2: Multikolinearitas dan Autokorelasi
+              column(6,
+                     box(
+                       width = NULL, status = "danger", solidHeader = TRUE,
+                       title = "Uji Multikolinearitas",
+                       verbatimTextOutput("assumption3")
+                     )
+              ),
+              column(6,
+                     box(
+                       width = NULL, status = "danger", solidHeader = TRUE,
+                       title = "Uji Autokorelasi",
+                       verbatimTextOutput("assumption4")
+                     )
+              )
+            ),
+            # FITUR UNDUH LAPORAN ANALISIS REGRESI
+            fluidRow(
+              box(
+                title = "Unduh Laporan",
+                status = "info",
+                solidHeader = TRUE,
+                width = 12,
+                div(
+                  style = "text-align: center; padding: 20px;",
+                  p("Unduh laporan lengkap analisis regresi dalam format PDF"),
+                  downloadButton("download_laporan_regresi", 
+                                 "Unduh Laporan Analisis Regresi", 
+                                 class = "btn-primary btn-lg",
+                                 style = "margin: 10px;")
+                )
+              )
+            )
+        )
+      ),
+      
+      tabItem(
+        tabName = "stat-wilayah",
+        fluidRow(
+          column(width = 12,
+                 box(
+                   title = tags$strong("Petunjuk Penggunaan Halaman"),
+                   status = "info",
+                   width = 12,
+                   icon = icon("book-open"),
+                   p("Halaman ini menampilkan tabel dataset provinsi yang Anda pilih. Ikuti langkah-langkah berikut:"),
+                   tags$ol(
+                     tags$li(tags$strong("Pilih Provinsi:"), " Gunakan dropdown 'Pilih Provinsi' untuk melihat data spesifik suatu provinsi di Indonesia, atau pilih 'Indonesia' untuk melihat data agregat nasional."),
+                     tags$li(tags$strong("Atur Rentang Tahun:"), " Geser slider 'Pilih Rentang Tahun' untuk memfokuskan data pada periode waktu yang Anda inginkan."),
+                     tags$li(tags$strong("Unduh Data:"), " Setelah Anda memfilter provinsi dan rentang tahun, Anda dapat mengunduh tabel dataset sesuai filter Anda tadi."),
+                     tags$li(tags$strong("Search:"), " Anda juga dapat memfilter secara manual tampilan data tabel dengan mengetikkan kata kunci, misal 'Aceh', '2022', dsb. di pojok kanan atas tabel.")
+                   )
+                 )
+          )
+        ),
+        fluidRow(
+          box(
+            title = "Data Statistik per Provinsi",
+            status = "primary",
+            solidHeader = TRUE,
+            width = 12,
+            fluidRow(
+              column(
+                width = 5,
+                selectInput(
+                  inputId = "provinsi_terpilih_stat",
+                  label = "Pilih Provinsi:",
+                  choices = c("Indonesia", unique(data_dashboard$provinsi)),
+                  selected = "Indonesia"
+                )
+              ),
+              column(
+                width = 4,
+                sliderInput(
+                  inputId = "rentang_tahun_provinsi_stat",
+                  label = "Pilih Rentang Tahun :",
+                  min = min(data_dashboard$tahun),
+                  max = max(data_dashboard$tahun),
+                  value = c(min(data_dashboard$tahun), max(data_dashboard$tahun)),
+                  sep = ""
+                )
+              ),
+              column(
+                width = 3,
+                div(
+                  style = "text-align: right; padding-top: 25px;",
+                  downloadButton("download_data_provinsi", "Unduh Data (.csv)")
+                )
+              )
+            ),
+            hr(),
+            DT::dataTableOutput("tabel_stat_provinsi")
+          )
+        )
+      ),
+      
+      tabItem(
+        
+        tabName = "stat-bencana",
+        fluidRow(
+          column(width = 12,
+                 box(
+                   title = tags$strong("Petunjuk Penggunaan Halaman"),
+                   status = "info",
+                   width = 12,
+                   icon = icon("book-open"),
+                   p("Halaman ini menampilkan tabel dataset jenis bencana yang Anda pilih. Ikuti langkah-langkah berikut:"),
+                   tags$ol(
+                     tags$li(tags$strong("Pilih Bencana:"), " Gunakan dropdown 'Pilih Bencana' untuk melihat data spesifik suatu bencana yang terjadi tiap provinsi di Indonesia."),
+                     tags$li(tags$strong("Atur Rentang Tahun:"), " Geser slider 'Pilih Rentang Tahun' untuk memfokuskan data pada periode waktu yang Anda inginkan."),
+                     tags$li(tags$strong("Unduh Data:"), " Setelah Anda memfilter jenis bencana dan rentang tahun, Anda dapat mengunduh tabel dataset sesuai filter Anda tadi."),
+                     tags$li(tags$strong("Search:"), " Anda juga dapat memfilter secara manual tampilan data tabel dengan mengetikkan kata kunci, misal 'Aceh', '2022', dsb. di pojok kanan atas tabel.")
+                   )
+                 )
           )
         ),
         
-        column(
-          width = 8,
-          box(
-            width = NULL, status = "info", solidHeader = TRUE,
-            title = "Ringkasan Model Regresi",
-            verbatimTextOutput("model_summary")
-          ),
-          
-          box(
-            width = NULL, status = "success", solidHeader = TRUE,
-            title = "Statistik Deskriptif",
-            tagList(
-              verbatimTextOutput("descriptive_stats"),
-              verbatimTextOutput("inter_descriptive_stats")
-            )
-          )
-        )
-      ),
-      
-      fluidRow(
         box(
-          width = 12, status = "warning", solidHeader = TRUE,
-          title = "Diagnostik Plot",
-          plotOutput("diagnostic_plot")
-        )
-      ),
-      
-      fluidRow(
-        box(
-          width = 12, status = "danger", solidHeader = TRUE,
-          title = "Ringkasan Pemeriksaan Uji Model Regresi",
-          verbatimTextOutput("overall_check")
-        )
-      ),
-      
-      fluidRow(
-        # Row 1: Homoskedastisitas dan Normalitas
-        column(6,
-               box(
-                 width = NULL, status = "danger", solidHeader = TRUE,
-                 title = "Uji Homoskedastisitas",
-                 verbatimTextOutput("assumption1")
-               )
-        ),
-        column(6,
-               box(
-                 width = NULL, status = "danger", solidHeader = TRUE,
-                 title = "Uji Normalitas Residual",
-                 verbatimTextOutput("assumption2")
-               )
-        )
-      ),
-      fluidRow(
-        # Row 2: Multikolinearitas dan Autokorelasi
-        column(6,
-               box(
-                 width = NULL, status = "danger", solidHeader = TRUE,
-                 title = "Uji Multikolinearitas",
-                 verbatimTextOutput("assumption3")
-               )
-        ),
-        column(6,
-               box(
-                 width = NULL, status = "danger", solidHeader = TRUE,
-                 title = "Uji Autokorelasi",
-                 verbatimTextOutput("assumption4")
-               )
-        )
-      )
-    ),
-    
-    tabItem(
-      tabName = "stat-wilayah",
-      fluidRow(
-        box(
-          title = "Data Statistik per Provinsi",
-          status = "primary",
+          title = "Data Statistik per Jenis Bencana",
+          status = "info",
           solidHeader = TRUE,
           width = 12,
           fluidRow(
             column(
-              width = 5,
+              width = 4,
               selectInput(
-                inputId = "provinsi_terpilih_stat",
-                label = "Pilih Provinsi:",
-                choices = c("Indonesia", unique(data_dashboard$provinsi)),
-                selected = "Indonesia"
+                inputId = "bencana_terpilih_stat",
+                label = "Pilih Bencana:",
+                choices = c("Banjir", "Cuaca ekstrem", "Gelombang pasang / Abrasi",
+                            "Kebakaran hutan dan lahan", "Kekeringan", "Longsor"),
+                selected = "Banjir"
               )
             ),
             column(
               width = 4,
               sliderInput(
-                inputId = "rentang_tahun_provinsi_stat",
+                inputId = "rentang_tahun_bencana_stat",
                 label = "Pilih Rentang Tahun :",
                 min = min(data_dashboard$tahun),
                 max = max(data_dashboard$tahun),
@@ -702,55 +1152,86 @@ ui <- dashboardPage(
                 sep = ""
               )
             ),
+            
             column(
-              width = 3,
+              width = 4,
               div(
                 style = "text-align: right; padding-top: 25px;",
-                downloadButton("download_data_provinsi", "Unduh Data (.csv)")
+                downloadButton("download_data_bencana", "Unduh Data (.csv)")
               )
             )
           ),
           hr(),
-          DT::dataTableOutput("tabel_stat_provinsi")
+          DT::dataTableOutput("tabel_stat_bencana")
         )
-      )
-    ),
-    
-    tabItem(
-      tabName = "stat-bencana",
-      box(
-        title = "Data Statistik per Jenis Bencana",
-        status = "info",
-        solidHeader = TRUE,
-        width = 12,
+      ),
+      
+      # --- HALAMAN METADATA ---
+      tabItem(
+        tabName = "metadata",
         fluidRow(
-          column(
-            width = 4,
-            selectInput(
-              inputId = "bencana_terpilih_stat",
-              label = "Pilih Bencana:",
-              choices = c("Banjir", "Cuaca ekstrem", "Gelombang pasang / Abrasi", 
-                          "Kebakaran hutan dan lahan", "Kekeringan", "Longsor"),
-              selected = "Banjir"
-            )
-          ),
           
-          column(
-            width = 8,
-            div(
-              style = "text-align: right; padding-top: 25px;",
-              downloadButton("download_data_bencana", "Unduh Data (.csv)")
-            )
+          column(width = 6,
+                 box(
+                   title = tagList(icon("file-alt"), "Sumber Data"),
+                   status = "primary",
+                   solidHeader = TRUE,
+                   width = 12,
+                   p("Data yang digunakan dalam dashboard ini merupakan gabungan dari beberapa sumber terpercaya untuk memastikan analisis yang komprehensif:"),
+                   tags$ul(
+                     tags$li(tags$strong("Badan Nasional Penanggulangan Bencana (BNPB):"), " Data jumlah kejadian dan korban jiwa untuk berbagai jenis bencana hidrometeorologi."),
+                     tags$li(tags$strong("Kementrian Lingkungan Hidup dan Kehutanan:"), " Data jumlah kebakaran hutan dan lahan."),
+                     tags$li(tags$strong("Badan Meteorologi, Klimatologi, dan Geofisika (BMKG):"), " Data historis variabel iklim seperti suhu, curah hujan, kelembaban, dll."),
+                     tags$li(tags$strong("Badan Pusat Statistik (BPS):"), " Rujukan metadata variabel statistik yang digunakan ."),
+                     tags$li(tags$strong("Data Spasial (Shapefile):"), " Peta administratif provinsi Indonesia untuk visualisasi geografis.")
+                   )
+                 )
+          ),
+          # Box Cakupan Data
+          column(width = 6,
+                 box(
+                   title = tagList(icon("calendar-alt"), "Cakupan Data"),
+                   status = "info",
+                   solidHeader = TRUE,
+                   width = 12,
+                   p("Cakupan data yang dianalisis dalam dashboard ini meliputi:"),
+                   tags$ul(
+                     tags$li(tags$strong("Rentang Waktu:"), " 2020 – 2024."),
+                     tags$li(tags$strong("Cakupan Wilayah:"), " 34, 37, hingga 38 Provinsi di seluruh Indonesia (disesuaikan dengan pemekaran wilayah)."),
+                     tags$li(tags$strong("Frekuensi Update:"), " Data diperbarui setiap tahun."),
+                     tags$li(tags$strong("Variabel Utama:"), " Data kejadian bencana, korban jiwa, dan berbagai parameter iklim.")
+                   ),
+                   p("Data telah melalui proses pembersihan dan agregasi ke tingkat tahunan per provinsi.")
+                 )
           )
         ),
-        hr(),
-        DT::dataTableOutput("tabel_stat_bencana")
-      )
-    ),
-    
-    tabItem(
-      tabName = "profile",
-      tags$style("
+        
+        # Box untuk Melihat Detail Variabel
+        fluidRow(
+          box(
+            title = tagList(icon("tags"), "Eksplorasi Metadata Variabel"),
+            status = "success",
+            solidHeader = TRUE,
+            width = 12,
+            # Dropdown untuk memilih variabel
+            selectInput(
+              inputId = "pilih_variabel_metadata",
+              label = "Pilih variabel untuk melihat detailnya:",
+              # Mengambil nama variabel dari kamus data kita
+              choices = setNames(names(metadata_kamus), sapply(metadata_kamus, `[[`, "Nama Variabel")),
+              width = "100%"
+            ),
+            hr(),
+            # Output untuk menampilkan detail metadata
+            uiOutput("tampil_metadata_variabel"),
+            p(strong("Sumber :"),"Badan Pusat Statistik (BPS)")
+          )
+        ),
+      ),
+      
+      tabItem(
+        tabName = "profile",
+        tags$style("
         .profile-container {
           padding: 20px;
         }
@@ -979,11 +1460,11 @@ ui <- dashboardPage(
           }
         }
       "),
-      div(class = "profile-container",
-          uiOutput("profileUI")
+        div(class = "profile-container",
+            uiOutput("profileUI")
+        )
       )
     )
-  )
   )
 )
 
@@ -1080,7 +1561,6 @@ server <- function(input, output,session){
   # Output Dashboard Provinsi
   
   ## Filter Data Reaktif untuk Dashboard Provinsi
-  
   provinsi_filter <- reactive({
     if (input$provinsi_terpilih == "Indonesia"){
       data_dashboard %>% 
@@ -1267,7 +1747,6 @@ server <- function(input, output,session){
   # Output Dashboard Bencana
   
   ## Filter Data Reaktif untuk Dashboard Bencana
-  
   bencana_filter <- reactive({
     bencana_spesifik <- input$bencana_terpilih
     korban_spesifik <- paste0("korban_",gsub(" / ","_", bencana_spesifik))
@@ -1446,7 +1925,6 @@ server <- function(input, output,session){
   # Output Peta
   
   ## Filter Data Reaktif untuk Peta Bencana
-  
   peta_bencana_filter <- reactive({
     bencana_spesifik <- input$peta_bencana_terpilih
     korban_spesifik <- paste0("korban_",gsub(" / ","_", bencana_spesifik))
@@ -1463,7 +1941,6 @@ server <- function(input, output,session){
   })
   
   ## Peta dengan Leaflet
-  
   output$peta_bencana_box<- renderUI({
     box(
       title = paste("Peta Distribusi", input$peta_bencana_terpilih,"Tahun",input$tahun_peta_bencana),
@@ -1533,7 +2010,6 @@ server <- function(input, output,session){
   })
   
   ## Filter Data Reaktif untuk Peta Iklim
-  
   peta_iklim_filter <-  reactive({
     nilai_iklim <- input$peta_iklim_terpilih
     
@@ -1547,10 +2023,9 @@ server <- function(input, output,session){
   })
   
   ## Peta dengan Leaflet
-  
   output$peta_iklim_box <- renderUI({
     box(
-      title = paste("Peta Distribusi", names(variabel_iklim)[variabel_iklim == input$peta_iklim_terpilih],"Tahun",input$tahun_peta_bencana),
+      title = paste("Peta Distribusi", names(variabel_iklim)[variabel_iklim == input$peta_iklim_terpilih],"Tahun",input$tahun_peta_iklim),
       status = "success",
       solidHeader = TRUE,
       width = 12,
@@ -1612,30 +2087,95 @@ server <- function(input, output,session){
   })
   
   # Output Analisis
-  ## Scatter-Matrix
   
+  # Fungsi interpretasi korelasi
+  interpret_korelasi <- function(data, vars, provinsi) {
+    cat("Interpretasi Korelasi Antar Variabel untuk Provinsi:", provinsi, "\n\n")
+    cor_matrix <- cor(data[, vars], use = "complete.obs")
+    
+    for (i in 1:(length(vars) - 1)) {
+      for (j in (i + 1):length(vars)) {
+        nilai <- cor_matrix[i, j]
+        strength <- ifelse(abs(nilai) < 0.3, "lemah",
+                           ifelse(abs(nilai) < 0.7, "sedang", "kuat"))
+        direction <- ifelse(nilai > 0, "positif", "negatif")
+        cat("Variabel", vars[i], "dan", vars[j], "memiliki korelasi", strength, direction,
+            "(", round(nilai, 2), ")\n")
+      }
+    }
+  }
+  
+  ## Scatter-Matrix
   output$scatterplot <- renderPlot({
     req(input$vars_korelasi)
-    validate(need(length(input$vars_korelasi) >= 2, "Pilih minimal 2 variabel."))
+    validate(need(length(input$vars_korelasi) >= 2,
+                  "Pilih minimal 2 variabel."))
     
-    plot_data <- data_dashboard[, input$vars_korelasi, drop = FALSE]
-    colnames(plot_data) <- format_label(colnames(plot_data))
+    # --- filter provinsi (sama dgn regresi) ---
+    if (input$prov_korelasi == "Indonesia") {
+      dat <- data_dashboard
+    } else {
+      dat <- data_dashboard %>% filter(provinsi == input$prov_korelasi)
+    }
     
-    ggpairs(plot_data)
+    # --- terapkan transformasi jika user mau (opsional) ---
+    trans_x <- input$trans_indep  # dari panel regresi
+    trans_y <- input$trans_dep
+    for (v in input$vars_korelasi) {
+      if (v == input$dep_var) {  
+        # variabel yang sama dengan Y terpilih
+        dat[[v]] <- apply_transformation(dat[[v]], trans_y)
+      } else {                           # selain itu pakai transformasi X
+        dat[[v]] <- apply_transformation(dat[[v]], trans_x)
+      }
+    }
+    
+    # siap diplot
+    ggpairs(dat[, input$vars_korelasi, drop = FALSE])
   })
   
   output$cor_matrix <- renderDT({
     req(input$vars_korelasi)
     validate(need(length(input$vars_korelasi) >= 2, ""))
     
-    plot_data <- data_dashboard[, input$vars_korelasi, drop = FALSE]
-    cor_mat   <- round(cor(plot_data, use = "pairwise.complete.obs"), 3)
-    colnames(cor_mat) <- rownames(cor_mat) <- format_label(colnames(cor_mat))
+    # filter provinsi—sama persis dg di atas
+    dat <- if (input$prov_korelasi == "Indonesia") data_dashboard
+    else filter(data_dashboard, provinsi == input$prov_korelasi)
     
+    # transformasi identik
+    for (v in input$vars_korelasi) {
+      if (v == input$dep_var)  dat[[v]] <- apply_transformation(dat[[v]], input$trans_dep)
+      else                     dat[[v]] <- apply_transformation(dat[[v]], input$trans_indep)
+    }
+    
+    cor_mat <- round(cor(dat[, input$vars_korelasi], use = "pairwise.complete.obs"), 3)
+    colnames(cor_mat) <- rownames(cor_mat) <- format_label(colnames(cor_mat))
     datatable(cor_mat, options = list(dom = "t", scrollX = TRUE))
   })
   
+  # Fungsi interpretasi regresi
+  interpret_regresi <- function(model, dep_var, indep_vars, provinsi) {
+    cat("Interpretasi Regresi untuk Provinsi:", provinsi, "\n\n")
+    coef <- summary(model)$coefficients
+    
+    for (i in 2:nrow(coef)) {
+      var_name <- indep_vars[i - 1]
+      beta <- coef[i, 1]
+      pval <- coef[i, 4]
+      
+      signif <- if (pval < 0.01) "sangat signifikan"
+      else if (pval < 0.05) "signifikan"
+      else "tidak signifikan"
+      
+      arah <- if (beta > 0) "meningkatkan" else "menurunkan"
+      
+      cat(sprintf("Setiap kenaikan 1 unit %s akan %s %s sebesar %.3f (p = %.3f), yang berarti %s.\n",
+                  var_name, arah, dep_var, abs(beta), pval, signif))
+    }
+  }
+  
   # Regresi dengan Filter Provinsi
+  
   # Fungsi helper untuk transformasi
   apply_transformation <- function(x, trans_type, lambda = NULL) {
     switch(trans_type,
@@ -1709,6 +2249,7 @@ server <- function(input, output,session){
   }
   
   # Regresi
+  
   # Default X untuk masing-masing Y
   default_x_map <- list(
     "Total_Kejadian" = c("suhu_rata2", "curah_hujan", "kelembaban", "kecepatan_angin", "tekanan_udara"),
@@ -1764,18 +2305,23 @@ server <- function(input, output,session){
     req(input$dep_var, input$indep_vars, input$prov_var)
     validate(need(length(input$indep_vars) >= 1, "Pilih minimal 1 variabel independen."))
     
-    # Filter data
-    if (input$prov_var == "Indonesia") {
-      data_filtered <- data_dashboard
-    } else {
-      data_dashboard[is.na(data_dashboard)] <-  0 
-      data_filtered <- data_dashboard[data_dashboard$provinsi == input$prov_var, ]
-    }
+    # # Filter data
+    # if (input$prov_var == "Indonesia") {
+    #   data_filtered <- data_dashboard
+    # } else {
+    #   data_dashboard[is.na(data_dashboard)] <-  0 
+    #   data_filtered <- data_dashboard[data_dashboard$provinsi == input$prov_var, ]
+    # }
     
-    validate(need(nrow(data_filtered) > 0, 
+    data_filtered <- data_dashboard %>%
+      # BENAR: Lakukan mutasi di sini, bukan pada objek global
+      mutate(across(everything(), ~replace_na(.x, 0))) %>%
+      filter(provinsi == input$prov_var)
+    
+    validate(need(nrow(data_filtered) > 0,
                   paste("Tidak ada data untuk provinsi:", input$prov_var)))
     
-    validate(need(nrow(data_filtered) > length(input$indep_vars), 
+    validate(need(nrow(data_filtered) > length(input$indep_vars),
                   "Jumlah observasi tidak mencukupi untuk analisis regresi"))
     
     # Siapkan data untuk transformasi
@@ -1827,7 +2373,34 @@ server <- function(input, output,session){
     
     print(summary(model))
   })
+  
+  # Interpretasi regresi
+  output$interpretasi_regresi <- renderPrint({
+    model <- model_fit()
+    if (inherits(model, "lm")) {
+      interpret_regresi(model, input$dep_var, input$indep_vars, input$prov_var)
+    } else {
+      cat("Model tidak valid.")
+    }
+  })
+  
+  # Interpretasi korelasi
+  output$interpretasi_korelasi <- renderPrint({
+    req(input$vars_korelasi, input$prov_korelasi)
+    validate(need(length(input$vars_korelasi) >= 2, "Pilih minimal 2 variabel."))
     
+    dat <- filter(data_dashboard, provinsi == input$prov_korelasi)
+    
+    # Apply transformasi jika perlu
+    for (v in input$vars_korelasi) {
+      if (v == input$dep_var)  dat[[v]] <- apply_transformation(dat[[v]], input$trans_dep)
+      else                     dat[[v]] <- apply_transformation(dat[[v]], input$trans_indep)
+    }
+    
+    interpret_korelasi(dat, input$vars_korelasi, input$prov_korelasi)
+  })
+  
+  
   # reactive untuk menampilkan statistik deskriptif data yang difilter
   filtered_data <- reactive({
     req(input$prov_var)
@@ -1897,7 +2470,7 @@ server <- function(input, output,session){
       }
       
       # Interpretasi rentang
-      cat(paste("  - Rentang:", round(max_val - min_val, 2), 
+      cat(paste("  - Rentang:", round(max_val - min_val, 2),
                 "dengan IQR:", round(iqr_val, 2), "\n"))
       
       # Deteksi outlier potensial
@@ -2064,7 +2637,8 @@ server <- function(input, output,session){
   output$assumption3 <- renderPrint({
     req(model_fit())
     
-    model <- model_fit()    
+    model <- model_fit()
+    
     # 3. UJI MULTIKOLINEARITAS (VIF)
     cat("3. UJI MULTIKOLINEARITAS\n")
     cat("   Variance Inflation Factor (VIF)\n")
@@ -2094,12 +2668,12 @@ server <- function(input, output,session){
           cat("Dengan demikian, model regresi belum memenuhi asumsi nonmultikolinearitas.\n")
           assumption_results$multikolinearitas <- FALSE
         } else {
-          cat("\n   Keputusan = TERDAPAT MULTIKOLINEARITAS TINGGI PADA MODEL (ada VIF > 10)\n\n")
+          cat("\n   Keputusan = TERDAPAT MULTI KOLINEARITAS TINGGI PADA MODEL (ada VIF > 10)\n\n")
           cat("Dengan demikian, model regresi belum memenuhi asumsi nonmultikolinearitas.\n")
           assumption_results$multikolinearitas <- FALSE
         }
       } else {
-        cat("Model regresi hanya memiliki satu variabel independen, sehingga uji multikolinearitas tidak diperlukan.\n")
+        cat("   Hanya ada 1 variabel independen, tidak perlu uji multikolinearitas.\n")
         assumption_results$multikolinearitas <- TRUE
       }
     }, error = function(e) {
@@ -2115,35 +2689,25 @@ server <- function(input, output,session){
     
     # 4. UJI AUTOKORELASI (Durbin-Watson Test)
     cat("4. UJI AUTOKORELASI\n")
-    cat("   H₀: Nonautokorelasi\n")
-    cat("   H₁: Autokorelasi\n")
+    cat("   H₀: Tidak ada autokorelasi (ρ = 0)\n")
+    cat("   H₁: Ada autokorelasi (ρ ≠ 0)\n")
     
     tryCatch({
       library(lmtest)
       dw_test <- dwtest(model)
       cat("   Durbin-Watson Test:\n")
-      cat("   - Statistik DW =", round(dw_test$statistic, 4), "\n")
-      cat("   - p-value =", round(dw_test$p.value, 4), "\n\n")
-      
-      # Interpretasi nilai DW
-      dw_val <- as.numeric(dw_test$statistic)
-      if(dw_val < 1.5) {
-        cat("   Indikasi: Autokorelasi positif (DW < 1.5)\n")
-      } else if(dw_val > 2.5) {
-        cat("   Indikasi: Autokorelasi negatif (DW > 2.5)\n")
-      } else {
-        cat("   Indikasi: Tidak ada autokorelasi yang kuat (1.5 ≤ DW ≤ 2.5)\n")
-      }
+      cat("   - Statistics DW =", round(dw_test$statistic, 4), "\n")
+      cat("   - p-value =", round(dw_test$p.value, 4), "\n")
       
       if(dw_test$p.value > 0.05) {
-        cat("   Keputusan: TIDAK ADA AUTOKORELASI (p > 0.05)\n\n")
-        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Durbin-Watson lebih besar dari α, sehingga H₀ diterima.\n") 
-        cat("Dengan demikian, model regresi memenuhi asumsi nonautokorelasi atau tidak terdapat autokorelasi pada model.\n")
+        cat("   - Keputusan = GAGAL TOLAK H₀ (p > 0.05)\n\n")
+        cat("Berdasarkan tingkat signifikansi 5%, p-value uji Durbin-Watson lebih besar dari α, sehingga H₀ diterima.\n")
+        cat("Dengan demikian, model regresi memenuhi asumsi nonautokorelasi atau tidak ada autokorelasi pada model.\n")
         assumption_results$autokorelasi <- TRUE
       } else {
-        cat("   Keputusan: ADA AUTOKORELASI (p ≤ 0.05)\n\n")
+        cat("   - Keputusan = TOLAK H₀ (p ≤ 0.05)\n\n")
         cat("Berdasarkan tingkat signifikansi 5%, p-value uji Durbin-Watson kurang dari atau sama dengan α, sehingga H₀ ditolak.\n")
-        cat("Dengan demikian, model regresi belum memenuhi asumsi nonautokorelasi atau masih terdapat autokorelasi pada model.\n")
+        cat("Dengan demikian, model regresi belum memenuhi asumsi nonautokorelasi atau terdapat autokorelasi pada model.\n")
         assumption_results$autokorelasi <- FALSE
       }
     }, error = function(e) {
@@ -2152,11 +2716,14 @@ server <- function(input, output,session){
     })
   })
   
-  # OVERALL CHECK - Tidak melakukan pengujian ulang
+  # ===================================================================
+  # OUTPUT UNTUK RINGKASAN UJI ASUMSI KESELURUHAN
+  # ===================================================================
   output$overall_check <- renderPrint({
+    # Pastikan model sudah ada
     req(model_fit())
     
-    # Tunggu semua hasil pengujian tersedia
+    # Pastikan semua hasil uji asumsi sudah dihitung
     req(
       !is.null(assumption_results$homoskedastisitas),
       !is.null(assumption_results$normalitas),
@@ -2164,190 +2731,381 @@ server <- function(input, output,session){
       !is.null(assumption_results$autokorelasi)
     )
     
-    # Ringkasan hasil
-    cat("RINGKASAN HASIL PENGUJIAN ASUMSI:\n")
-    cat("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    # --- Mulai Logika untuk Membuat Teks Ringkasan ---
     
-    # Status masing-masing asumsi
-    status_homo <- if(assumption_results$homoskedastisitas) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
-    status_normal <- if(assumption_results$normalitas) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
-    status_multi <- if(assumption_results$multikolinearitas) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
-    status_auto <- if(assumption_results$autokorelasi) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
+    cat("RINGKASAN HASIL PENGUJIAN ASUMSI KLASIK MODEL REGRESI\n")
+    cat("================================================================\n\n")
     
-    cat(sprintf("1. Homoskedastisitas     : %s\n", status_homo))
-    cat(sprintf("2. Normalitas Residual   : %s\n", status_normal))
-    cat(sprintf("3. Nonmultikolinearitas  : %s\n", status_multi))
-    cat(sprintf("4. Nonautokorelasi       : %s\n", status_auto))
+    # Ambil hasil dari reactiveValues
+    assumptions <- c(
+      "Homoskedastisitas" = assumption_results$homoskedastisitas,
+      "Normalitas Residual" = assumption_results$normalitas,
+      "Non-multikolinearitas" = assumption_results$multikolinearitas,
+      "Non-autokorelasi" = assumption_results$autokorelasi
+    )
     
-    cat("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    # Buat status teks
+    for(i in 1:length(assumptions)) {
+      status <- if(assumptions[i]) "✓ TERPENUHI" else "✗ TIDAK TERPENUHI"
+      cat(sprintf("  %-25s: %s\n", names(assumptions)[i], status))
+    }
     
-    # Hitung jumlah asumsi yang terpenuhi
-    total_terpenuhi <- sum(c(
-      assumption_results$homoskedastisitas,
-      assumption_results$normalitas,
-      assumption_results$multikolinearitas,
-      assumption_results$autokorelasi
-    ))
+    cat("\n================================================================\n")
     
-    cat(sprintf("Uji Terpenuhi            : %d\n", total_terpenuhi))
-    cat(sprintf("Uji Tidak Terpenuhi      : %d\n", 4 - total_terpenuhi))
-    cat(sprintf("Persentase Terpenuhi     : %.1f%%\n", (total_terpenuhi/4)*100))
-    cat("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+    # Hitung total
+    passed <- sum(assumptions, na.rm = TRUE)
+    total <- length(assumptions)
     
-    if(total_terpenuhi == 4) {
-      cat("🎉 SEMUA ASUMSI REGRESI TERPENUHI (4/4)\n")
-    } else if(total_terpenuhi >= 2) {
-      cat("⚠️  SEBAGIAN ASUMSI TERPENUHI (", total_terpenuhi, "/4)\n\n")
-      cat("Model regresi masih dapat digunakan dengan catatan:\n")
-      
-      # Daftar asumsi yang tidak terpenuhi
-      cat("- Asumsi yang TIDAK terpenuhi:\n")
-      if(!assumption_results$homoskedastisitas) cat("  • Homoskedastisitas\n")
-      if(!assumption_results$normalitas) cat("  • Normalitas Residual\n")
-      if(!assumption_results$multikolinearitas) cat("  • Nonmultikolinearitas\n")
-      if(!assumption_results$autokorelasi) cat("  • Nonautokorelasi\n")
-      
+    cat(sprintf("KESIMPULAN: Model memenuhi %d dari %d asumsi klasik (%.0f%%).\n\n", 
+                passed, total, (passed/total)*100))
+  
+    if(passed == total) {
+      cat("🎉 EXCELLENT! Model regresi memenuhi SEMUA asumsi klasik.\n")
+      cat("   Penaksir yang dihasilkan bersifat BLUE (Best Linear Unbiased Estimator).\n")
+      cat("   Model dapat digunakan untuk inferensi dan prediksi dengan tingkat kepercayaan tinggi.\n")
+    } else if(passed >= total * 0.75) {
+      cat("✅ GOOD! Model regresi memenuhi sebagian besar asumsi klasik.\n")
+      cat("   Penaksir masih dapat diandalkan, namun perlu perhatian pada asumsi yang tidak terpenuhi.\n")
+      cat("   Pertimbangkan transformasi data atau metode regresi alternatif untuk asumsi yang dilanggar.\n")
+    } else if(passed >= total * 0.5) {
+      cat("⚠️  CAUTION! Model regresi hanya memenuhi sebagian asumsi klasik.\n")
+      cat("   Penaksir mungkin tidak optimal. Hasil inferensi harus diinterpretasi dengan hati-hati.\n")
+      cat("   Sangat disarankan untuk melakukan transformasi data atau menggunakan metode regresi robust.\n")
     } else {
-      cat("❌ MAYORITAS ASUMSI TIDAK TERPENUHI (", total_terpenuhi, "/4)\n\n")
-      cat("Hasil inferensi statistik dari model ini mungkin tidak dapat diandalkan.\n")
+      cat("❌ WARNING! Model regresi melanggar sebagian besar asumsi klasik.\n")
+      cat("   Penaksir tidak bersifat BLUE dan hasil inferensi tidak dapat diandalkan.\n")
+      cat("   Wajib melakukan perbaikan model sebelum digunakan untuk analisis lebih lanjut.\n")
+    }
+    
+    cat("\n================================================================\n")
+    cat("REKOMENDASI:\n")
+    
+    if(!assumption_results$normalitas) {
+      cat("• Normalitas: Coba transformasi Box-Cox, Yeo-Johnson, atau log pada variabel dependen\n")
+    }
+    if(!assumption_results$homoskedastisitas) {
+      cat("• Homoskedastisitas: Gunakan Weighted Least Squares (WLS) atau transformasi variabel\n")
+    }
+    if(!assumption_results$multikolinearitas) {
+      cat("• Multikolinearitas: Hapus variabel dengan VIF tinggi atau gunakan Ridge Regression\n")
+    }
+    if(!assumption_results$autokorelasi) {
+      cat("• Autokorelasi: Tambahkan lag variabel atau gunakan Generalized Least Squares (GLS)\n")
+    }
+    
+    if(passed == total) {
+      cat("• Model sudah optimal! Lanjutkan dengan interpretasi dan prediksi.\n")
     }
   })
   
   # Output Tabel Dinamis
-  provinsi_filter_stat <- reactive({
-    if (input$provinsi_terpilih_stat == "Indonesia"){
-      data_dashboard[-1] %>% 
-        filter(tahun >= input$rentang_tahun_provinsi_stat[1] & tahun <= input$rentang_tahun_provinsi_stat[2]) %>% 
-        arrange(desc(tahun)) %>% 
-        rename(
-          Provinsi = provinsi,
-          Tahun = tahun,
-          `Korban banjir` = korban_Banjir,
-          `Korban cuaca ekstrem` = korban_Cuaca_ekstrem,
-          `Total korban` = Total_Korban,
-          `Total kejadian` = Total_Kejadian,
-          `Korban gelombang pasang / Abrasi` = korban_Gelombang_pasang_Abrasi,
-          `Korban kebakaran hutan dan lahan` = korban_Kebakaran_hutan_dan_lahan,
-          `Korban kekeringan` = korban_Kekeringan,
-          `Korban Longsor` = korban_Longsor,
-          `Suhu Rata-Rata` = suhu_rata2,
-          `Curah hujan` = curah_hujan,
-          `Kecepatan angin` = kecepatan_angin,
-          Kelembaban = kelembaban,
-          `Tekanan udara` = tekanan_udara
-        )
-    } else{
-      data_dashboard[-1] %>%
-        filter(provinsi == input$provinsi_terpilih_stat) %>% 
-        filter(tahun >= input$rentang_tahun_provinsi_stat[1] & tahun <= input$rentang_tahun_provinsi_stat[2]) %>% 
-        arrange(desc(tahun)) %>% 
-        rename(
-          Provinsi = provinsi,
-          Tahun = tahun,
-          `Korban banjir` = korban_Banjir,
-          `Korban cuaca ekstrem` = korban_Cuaca_ekstrem,
-          `Total korban` = Total_Korban,
-          `Total kejadian` = Total_Kejadian,
-          `Korban gelombang pasang / Abrasi` = korban_Gelombang_pasang_Abrasi,
-          `Korban kebakaran hutan dan lahan` = korban_Kebakaran_hutan_dan_lahan,
-          `Korban kekeringan` = korban_Kekeringan,
-          `Korban Longsor` = korban_Longsor,
-          `Suhu Rata-Rata` = suhu_rata2,
-          `Curah hujan` = curah_hujan,
-          `Kecepatan angin` = kecepatan_angin,
-          Kelembaban = kelembaban,
-          `Tekanan udara` = tekanan_udara
-        ) 
+  
+  ## Filter Data Reaktif untuk Tabel Provinsi
+  tabel_provinsi_filter <- reactive({
+    if (input$provinsi_terpilih_stat == "Indonesia") {
+      data_dashboard %>%
+        filter(tahun >= input$rentang_tahun_provinsi_stat[1] & tahun <= input$rentang_tahun_provinsi_stat[2])
+    } else {
+      data_dashboard %>%
+        filter(provinsi == input$provinsi_terpilih_stat) %>%
+        filter(tahun >= input$rentang_tahun_provinsi_stat[1] & tahun <= input$rentang_tahun_provinsi_stat[2])
     }
   })
   
-  ## Tabel Data
+  ## Tabel Dinamis Provinsi
   output$tabel_stat_provinsi <- DT::renderDataTable({
     DT::datatable(
-      provinsi_filter_stat(),
-      options = list(pageLength = 10, scrollX = TRUE),
-      rownames = FALSE,
-      caption = "Data Iklim dan Bencana per Wilayah"
+      tabel_provinsi_filter(),
+      options = list(
+        pageLength = 10,
+        scrollX = TRUE,
+        dom = 'Bfrtip',
+        buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+      ),
+      filter = 'top',
+      rownames = FALSE
     )
   })
   
-  
+  ## Download Data Provinsi
   output$download_data_provinsi <- downloadHandler(
     filename = function() {
-      paste0("data-statistik-", input$provinsi_terpilih_stat, "-", Sys.Date(), ".csv")
+      paste("data_provinsi_", input$provinsi_terpilih_stat, "_", 
+            input$rentang_tahun_provinsi_stat[1], "-", input$rentang_tahun_provinsi_stat[2], 
+            "_", Sys.Date(), ".csv", sep = "")
     },
     content = function(file) {
-      data_lengkap <- provinsi_filter_stat()
-      
-      # BENAR: Gunakan ID tabel yang sesuai -> tabel_stat_provinsi_rows_all
-      data_untuk_diunduh <- data_lengkap[input$tabel_stat_provinsi_rows_all, ]
-      
-      write.csv(data_untuk_diunduh, file, row.names = FALSE)
+      write.csv(tabel_provinsi_filter(), file, row.names = FALSE)
     }
   )
   
-  data_stat_bencana <- reactive({
-    req(input$bencana_terpilih_stat)
-    
-    peta_kejadian <- list(
-      "Banjir" = "Banjir", "Cuaca ekstrem" = "Cuaca ekstrem", 
-      "Gelombang pasang / Abrasi" = "Gelombang pasang / Abrasi",
-      "Kebakaran hutan dan lahan" = "Kebakaran hutan dan lahan",
-      "Kekeringan" = "Kekeringan", "Longsor" = "Longsor"
-    )
-    
-    peta_korban <- list(
-      "Banjir" = "korban_Banjir", "Cuaca ekstrem" = "korban_Cuaca_ekstrem",
-      "Gelombang pasang / Abrasi" = "korban_Gelombang_pasang_Abrasi",
-      "Kebakaran hutan dan lahan" = "korban_Kebakaran_hutan_dan_lahan",
-      "Kekeringan" = "korban_Kekeringan", "Longsor" = "korban_Longsor"
-    )
-    
-    bencana_dipilih <- input$bencana_terpilih_stat
-    kolom_kejadian <- peta_kejadian[[bencana_dipilih]]
-    kolom_korban <- peta_korban[[bencana_dipilih]]
+  ## Filter Data Reaktif untuk Tabel Bencana
+  tabel_bencana_filter <- reactive({
+    bencana_spesifik <- input$bencana_terpilih_stat
+    korban_spesifik <- paste0("korban_", gsub(" / ", "_", bencana_spesifik))
+    korban_spesifik <- gsub(" ", "_", korban_spesifik)
     
     data_dashboard %>%
-      select(provinsi, tahun, all_of(kolom_kejadian), all_of(kolom_korban)) %>%
-      rename(
-        Jumlah_Kejadian = all_of(kolom_kejadian),
-        Jumlah_Korban_Jiwa = all_of(kolom_korban)
+      filter(tahun >= input$rentang_tahun_bencana_stat[1] & tahun <= input$rentang_tahun_bencana_stat[2]) %>%
+      select(
+        provinsi,
+        tahun,
+        bencana_spesifik = all_of(bencana_spesifik),
+        korban_spesifik = all_of(korban_spesifik)
       ) %>%
-      arrange(desc(tahun))
+      rename(
+        !!paste("Kejadian", bencana_spesifik) := bencana_spesifik,
+        !!paste("Korban", bencana_spesifik) := korban_spesifik
+      )
   })
   
-  ## Render Tabel Data Bencana
+  ## Tabel Dinamis Bencana
   output$tabel_stat_bencana <- DT::renderDataTable({
     DT::datatable(
-      data_stat_bencana(),
-      options = list(pageLength = 10, scrollX = TRUE),
-      rownames = FALSE,
-      caption = paste("Tabel Rincian untuk Bencana:", input$bencana_terpilih_stat)
+      tabel_bencana_filter(),
+      options = list(
+        pageLength = 10,
+        scrollX = TRUE,
+        dom = 'Bfrtip',
+        buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+      ),
+      filter = 'top',
+      rownames = FALSE
     )
   })
   
-  ## Fungsi Tombol Download Bencana
+  ## Download Data Bencana
   output$download_data_bencana <- downloadHandler(
     filename = function() {
-      paste0("data-rincian-", gsub(" ","-", input$bencana_terpilih_stat), ".csv")
+      paste("data_bencana_", gsub(" ", "_", input$bencana_terpilih_stat), "_", 
+            input$rentang_tahun_bencana_stat[1], "-", input$rentang_tahun_bencana_stat[2], 
+            "_", Sys.Date(), ".csv", sep = "")
     },
     content = function(file) {
-      data_lengkap <- data_stat_bencana()
-      
-      data_untuk_diunduh <- data_lengkap[input$tabel_stat_bencana_rows_all, ]
-      
-      write.csv(data_untuk_diunduh, file, row.names = FALSE)
+      write.csv(tabel_bencana_filter(), file, row.names = FALSE)
     }
   )
   
-  observeEvent(input$to_dashboard_button,{
-    updateTabItems(
-      session = session,
-      inputId = "sidebarMenuid",
-      selected = "dashboard-provinsi"
+  # Output Metadata
+  
+  output$tampil_metadata_variabel <- renderUI({
+    req(input$pilih_variabel_metadata)
+    
+    # Ambil metadata untuk variabel yang dipilih
+    metadata <- metadata_kamus[[input$pilih_variabel_metadata]]
+    
+    # Buat tampilan yang rapi
+    div(
+      style = "background-color: #f8f9fa; padding: 20px; border-radius: 10px; border-left: 5px solid #28a745;",
+      
+      # Nama Variabel sebagai header
+      h4(metadata$`Nama Variabel`, 
+         style = "color: #28a745; margin-bottom: 20px; font-weight: bold;"),
+      
+      # Detail metadata dalam format yang rapi
+      div(
+        style = "display: grid; gap: 15px;",
+        
+        div(
+          strong("Konsep: "), 
+          span(metadata$Konsep, style = "color: #495057;")
+        ),
+        
+        div(
+          strong("Definisi: "), 
+          span(metadata$Definisi, style = "color: #495057; text-align: justify;")
+        ),
+        
+        div(
+          strong("Referensi Waktu: "), 
+          span(metadata$`Referensi Waktu`, style = "color: #495057;")
+        ),
+        
+        div(
+          strong("Ukuran: "), 
+          span(metadata$Ukuran, style = "color: #495057;")
+        ),
+        
+        div(
+          strong("Satuan: "), 
+          span(metadata$Satuan, style = "color: #495057;")
+        ),
+        
+        div(
+          strong("Tipe Data: "), 
+          span(metadata$`Tipe Data`, style = "color: #495057;")
+        )
+      )
     )
   })
   
+  # Profile Tim
+  
+  # Data profil tim
+  team_profiles <- list(
+    list(
+      id = "profile1",
+      name = "T.M. Al-Asy'ari Al-Muchtari",
+      img = "profile_1.png",
+      email = "222313397@stis.ac.id",
+      asal = "Bireuen, Aceh",
+      kontribusi = tags$ol(
+        tags$li("Membuat kerangka aplikasi"),
+        tags$li("Membuat peta reaktif sebaran bencana dan iklim"),
+        tags$li("Mengumpulkan dan membersihkan data bencana alam"),
+        tags$li("Mengumpulkan data shapefile json untuk peta reaktif")
+      )
+    ),
+    list(
+      id = "profile2", 
+      name = "Qurany Nadhira Tsabita", 
+      img = "profile_2.png", 
+      email = "222313323@stis.ac.id",
+      asal = "Kediri, Jawa Timur",
+      kontribusi = tags$ol(
+        tags$li("Membuat beranda dashboard"),
+        tags$li("Membuat dashboard data menurut provinsi"),
+        tags$li("Mengumpulkan dan membersihkan variabel data iklim"),
+        tags$li("Menyusun laporan akhir projek")
+      )
+    ),
+    list(
+      id = "profile3",
+      name = "Wahyu Nugraha Raomi Gading",
+      img = "profile_3.jpg",
+      email = "222313421@stis.ac.id", 
+      asal = "Sleman, DI Yogyakarta",
+      kontribusi = tags$ol(
+        tags$li("Membuat tabel dinamis menurut provinsi dan jenis bencana"),
+        tags$li("Membuat metadata variabel yang digunakan"),
+        tags$li("Membuat user guide tiap halaman"),
+        tags$li("Mengumpulkan sebagian variabel data iklim")
+      )
+    ),
+    list(
+      id = "profile4",
+      name = "Dinda Putri Nur Wulandari", 
+      img = "profile_4.png",
+      email = "222313054@stis.ac.id", 
+      asal = "Bandung Barat, Jawa Barat", 
+      kontribusi = tags$ol(
+        tags$li("Membuat analisis model regresi dan kesimpulan menurut provinsi"),
+        tags$li("Membuat profil tim"),
+        tags$li("Mengumpulkan dana membersihkan sebagian data iklim"),
+        tags$li("Menyusun laporan akhir projek")
+      )
+    ),
+    list(
+      id = "profile5",
+      name = "Muhammad Hamlul Khair", 
+      img = "profile_5.png",
+      email = "222313241@stis.ac.id", 
+      asal = "Aceh", 
+      kontribusi = tags$ol(
+        tags$li("Membuat analisis korelasi dan kesimpulan antar variabel menurut provinsi"),
+        tags$li("Membuat analisis model regresi dan kesimpulan menurut provinsi"),
+        tags$li("")
+      )
+    )
+  )
+  
+  # Reactive values untuk state management
+  profile_state <- reactiveValues(
+    current_view = "overview",
+    selected_profile = NULL
+  )
+  
+  # Observer untuk tombol detail
+  observe({
+    for(profile in team_profiles) {
+      local({
+        current_profile <- profile
+        observeEvent(input[[paste0("btn_detail_", current_profile$id)]], {
+          profile_state$current_view <- "detail"
+          profile_state$selected_profile <- current_profile
+        })
+      })
+    }
+  })
+  
+  # Observer untuk tombol back
+  observeEvent(input$btn_back_overview, {
+    profile_state$current_view <- "overview"
+    profile_state$selected_profile <- NULL
+  })
+  
+  # Main profile UI output
+  output$profileUI <- renderUI({
+    div(class = "profile-content",
+        if(profile_state$current_view == "overview") {
+          # Overview page
+          div(
+            h2("Tim Pengembang Dashboard Climate Change", 
+               style = "text-align: center; color: #2c3e50; margin-bottom: 40px; font-weight: bold;"),
+            
+            fluidRow(
+              lapply(team_profiles, function(profile) {
+                column(4,
+                       div(class = "profile-card",
+                           div(style = "text-align: center;",
+                               img(src = profile$image, 
+                                   style = "width: 120px; height: 120px; margin-bottom: 15px;"),
+                               h4(profile$name),
+                               p(profile$email, style = "color: #667eea; font-weight: 600;"),
+                               p(profile$asal, style = "color: #95a5a6; font-size: 13px;"),
+                               actionButton(paste0("btn_detail_", profile$id), 
+                                            "Lihat Detail", 
+                                            class = "btn-profile")
+                           )
+                       )
+                )
+              })
+            )
+          )
+        } else {
+          # Detail page
+          profile <- profile_state$selected_profile
+          if(!is.null(profile)) {
+            box(
+              title = NULL,
+              width = 12,
+              status = "primary",
+              solidHeader = FALSE,
+              div(class = "detail-panel",
+                  fluidRow(
+                    column(4,
+                           div(class = "detail-image-container",
+                               img(src = profile$image, class = "detail-image")
+                           )
+                    ),
+                    column(8,
+                           div(class = "detail-info",
+                               h2(profile$name, class = "detail-name"),
+                               
+                               div(class = "detail-item", 
+                                   p(strong("Email: "), profile$email)
+                               ),
+                               div(class = "detail-item",
+                                   p(strong("Asal: "), profile$asal)
+                               ),
+                               div(class = "detail-item",
+                                   p(strong("Kontribusi: "), profile$kontribusi)
+                               ),
+                               
+                               actionButton("btn_back_overview", 
+                                            "← Kembali ke Overview", 
+                                            class = "back-btn")
+                           )
+                    )
+                  )
+              )
+            )
+          }
+        }
+    )
+  })
+  
+  # Navigasi
   rv <- reactiveValues(show_more = FALSE)
   
   observeEvent(input$more_info_button, {
@@ -2386,154 +3144,122 @@ server <- function(input, output,session){
     }
   })
   
-  # Kontrol tampilan halaman profile
-  profilePage <- reactiveVal("overview")
+  # DOWNLOAD HANDLERS UNTUK LAPORAN
   
-  # Ubah halaman saat tombol diklik
-  observeEvent(input$detail_tm, { profilePage("1") })
-  observeEvent(input$detail_qurany, { profilePage("2") })
-  observeEvent(input$detail_wahyu, { profilePage("3") })
-  observeEvent(input$detail_dinda, { profilePage("4") })
-  observeEvent(input$detail_hamlul, { profilePage("5") })
-  observeEvent(input$back, { profilePage("overview") })
-  
-  output$profileUI <- renderUI({
-    if (profilePage() == "overview") {
-      div(class = "profile-content",
-          fluidRow(
-            column(width = 4,
-                   div(class = "profile-card",
-                       div(style = "text-align: center;",
-                           tags$img(src = "profile_1.png",
-                                    width = "100%",
-                                    style = "margin-bottom: 15px;"),
-                           h4("T.M. Al-Asy'ari Al-Muchtari"),
-                           p("Mahasiswa"),
-                           actionButton("detail_tm", "View Detail", class = "btn-profile")
-                       )
-                   )
-            ),
-            column(width = 4,
-                   div(class = "profile-card",
-                       div(style = "text-align: center;",
-                           tags$img(src = "profile_2.png",
-                                    width = "100%",
-                                    style = "margin-bottom: 15px;"),
-                           h4("Qurany Nadhira Tsabita"),
-                           p("Mahasiswa"),
-                           actionButton("detail_qurany", "View Detail", class = "btn-profile")
-                       )
-                   )
-            ),
-            column(width = 4,
-                   div(class = "profile-card",
-                       div(style = "text-align: center;",
-                           tags$img(src = "profile_3.png",
-                                    width = "100%",
-                                    style = "margin-bottom: 15px;"),
-                           h4("Wahyu Nugraha Raomi Gading"),
-                           p("Mahasiswa"),
-                           actionButton("detail_wahyu", "View Detail", class = "btn-profile")
-                       )
-                   )
-            )
-          ),
-          fluidRow(
-            column(width = 4, offset = 2,
-                   div(class = "profile-card",
-                       div(style = "text-align: center;",
-                           tags$img(src = "profile_4.png",
-                                    width = "100%",
-                                    style = "margin-bottom: 15px;"),
-                           h4("Dinda Putri Nur Wulandari"),
-                           p("Mahasiswa"),
-                           actionButton("detail_dinda", "View Detail", class = "btn-profile")
-                       )
-                   )
-            ),
-            column(width = 4,
-                   div(class = "profile-card",
-                       div(style = "text-align: center;",
-                           tags$img(src = "profile_5.png",
-                                    width = "100%",
-                                    style = "margin-bottom: 15px;"),
-                           h4("Muhammad Hamlul Khair"),
-                           p("Mahasiswa"),
-                           actionButton("detail_hamlul", "View Detail", class = "btn-profile")
-                       )
-                   )
-            )
-          )
-      )
-    } else {
-      detail <- switch(profilePage(),
-                       "1" = list(
-                         name = "T.M. Al-Asy'ari Al-Muchtari",
-                         img = "profile_1.png",
-                         email = "222313397@stis.ac.id",
-                         asal = "Bireuen, Aceh",
-                         kontribusi = "test"
-                       ),
-                       "2" = list(   
-                         name = "Qurany Nadhira Tsabita", 
-                         img = "profile_2.png", 
-                         email = "222313323@stis.ac.id",
-                         asal = "Kediri, Jawa Timur",
-                         kontribusi = "test"
-                       ),
-                       "3" = list(
-                         name = "Wahyu Nugraha Raomi Gading",
-                         img = "profile_3.png",
-                         email = "222313421@stis.ac.id", 
-                         asal = "Sleman, DI Yogyakarta",
-                         kontribusi = "test"
-                       ),
-                       "4" = list(
-                         name = "Dinda Putri Nur Wulandari", 
-                         img = "profile_4.png",
-                         email = "222313054@stis.ac.id", 
-                         asal = "Bandung Barat, Jawa Barat", 
-                         kontribusi = "test"
-                       ),
-                       "5" = list(
-                         name = "Muhammad Hamlul Khair", 
-                         img = "profile_5.png",
-                         email = "222313241@stis.ac.id", 
-                         asal = "Aceh", 
-                         kontribusi = "test"
-                       ))
+  output$download_laporan_provinsi <- downloadHandler(
+    # UBAH EKSTENSI FILE DI SINI
+    filename = function() {
+      paste("Laporan_Dashboard_Provinsi_", input$provinsi_terpilih, "_", Sys.Date(), ".docx", sep = "")
+    },
+    content = function(file) {
+      tempReport <- file.path(tempdir(), "laporan_provinsi_template.Rmd")
+      file.copy("templates/laporan_provinsi_template.Rmd", tempReport, overwrite = TRUE)
       
-      div(class = "profile-content",
-          div(class = "profile-card detail-panel",
-              fluidRow(
-                column(width = 4,
-                       div(class = "detail-image-container",
-                           tags$img(src = detail$img,
-                                    class = "detail-image",
-                                    width = "100%")
-                       )
-                ),
-                column(width = 8,
-                       div(class = "detail-info",
-                           h3(detail$name, class = "detail-name"),
-                           div(class = "detail-item",
-                               p(tags$strong("Email "), detail$email)
-                           ),
-                           div(class = "detail-item", 
-                               p(tags$strong("Asal Daerah "), detail$asal)
-                           ),
-                           div(class = "detail-item",
-                               p(tags$strong("Kontribusi "), detail$kontribusi)
-                           ),
-                           br(),
-                           actionButton("back", "Back", class = "back-btn")
-                       )
-                )
-              )
-          )
+      params <- list(
+        provinsi = input$provinsi_terpilih,
+        tahun_awal = input$rentang_tahun_provinsi[1],
+        tahun_akhir = input$rentang_tahun_provinsi[2],
+        data = provinsi_filter()
       )
+      
+      # Render laporan (tidak ada yang perlu diubah di sini)
+      rmarkdown::render(tempReport, 
+                        output_file = file,
+                        params = params,
+                        envir = new.env(parent = globalenv()))
     }
-  })
+  )
+  
+  # Download Handler untuk Dashboard Bencana
+  output$download_laporan_bencana <- downloadHandler(
+    filename = function() {
+      paste("Laporan_Dashboard_Bencana_", gsub(" ", "_", input$bencana_terpilih), "_", Sys.Date(), ".docx", sep = "")
+    },
+    content = function(file) {
+      tempReport <- file.path(tempdir(), "laporan_bencana.Rmd")
+      file.copy("templates/laporan_bencana_template.Rmd", tempReport, overwrite = TRUE)
+      
+      params <- list(
+        bencana = input$bencana_terpilih,
+        tahun_awal = input$rentang_tahun_bencana[1],
+        tahun_akhir = input$rentang_tahun_bencana[2],
+        data = bencana_filter()
+      )
+      
+      rmarkdown::render(tempReport, 
+                        output_file = file,
+                        params = params,
+                        envir = new.env(parent = globalenv()))
+    }
+  )
+  
+  
+  
+  # Download Handler untuk Analisis Korelasi
+  output$download_laporan_korelasi <- downloadHandler(
+    filename = function() {
+      paste("Laporan_Analisis_Korelasi_", input$prov_korelasi, "_", Sys.Date(), ".docx", sep = "")
+    },
+    content = function(file) {
+      tempReport <- file.path(tempdir(), "laporan_korelasi.Rmd")
+      file.copy("templates/laporan_korelasi_template.Rmd", tempReport, overwrite = TRUE)
+      
+      # Siapkan data untuk korelasi
+      dat <- if (input$prov_korelasi == "Indonesia") data_dashboard
+      else filter(data_dashboard, provinsi == input$prov_korelasi)
+      
+      # Apply transformasi
+      for (v in input$vars_korelasi) {
+        if (v == input$dep_var)  dat[[v]] <- apply_transformation(dat[[v]], input$trans_dep)
+        else                     dat[[v]] <- apply_transformation(dat[[v]], input$trans_indep)
+      }
+      
+      params <- list(
+        provinsi = input$prov_korelasi,
+        variabel = input$vars_korelasi,
+        data = dat[, input$vars_korelasi, drop = FALSE],
+        trans_dep = input$trans_dep,
+        trans_indep = input$trans_indep
+      )
+      
+      rmarkdown::render(tempReport, 
+                        output_file = file,
+                        params = params,
+                        envir = new.env(parent = globalenv()))
+    }
+  )
+  
+  # Download Handler untuk Analisis Regresi
+  output$download_laporan_regresi <- downloadHandler(
+    filename = function() {
+      paste("Laporan_Analisis_Regresi_", input$prov_var, "_", Sys.Date(), ".docx", sep = "")
+    },
+    content = function(file) {
+      tempReport <- file.path(tempdir(), "laporan_regresi.Rmd")
+      file.copy("templates/laporan_regresi_template.Rmd", tempReport, overwrite = TRUE)
+      
+      params <- list(
+        provinsi = input$prov_var,
+        dep_var = input$dep_var,
+        indep_vars = input$indep_vars,
+        trans_dep = input$trans_dep,
+        trans_indep = input$trans_indep,
+        model = model_fit(),
+        data = filtered_data(),
+        assumptions = list(
+          homoskedastisitas = assumption_results$homoskedastisitas,
+          normalitas = assumption_results$normalitas,
+          multikolinearitas = assumption_results$multikolinearitas,
+          autokorelasi = assumption_results$autokorelasi
+        )
+      )
+      
+      rmarkdown::render(tempReport, 
+                        output_file = file,
+                        params = params,
+                        envir = new.env(parent = globalenv()))
+    }
+  )
 }
 
-shinyApp(ui, server)
+shinyApp(ui = ui, server = server)
