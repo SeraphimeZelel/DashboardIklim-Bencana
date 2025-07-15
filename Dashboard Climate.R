@@ -389,7 +389,7 @@ ui <- dashboardPage(
             div(
               style = "position: relative; padding-bottom: 45%; height: 0; overflow: hidden; margin-bottom: 15px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);",
               tags$iframe(
-                src = "https://www.youtube.com/embed/LY6K_GD4ypc", # Updated video link
+                src = "https://www.youtube.com/embed/C-_xfab68uA",
                 style = "position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;",
                 allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
                 allowfullscreen = NA
