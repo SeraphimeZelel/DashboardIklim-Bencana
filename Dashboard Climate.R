@@ -3010,11 +3010,12 @@ server <- function(input, output,session){
       email = "222313397@stis.ac.id",
       asal = "Bireuen, Aceh",
       kontribusi = tags$ol(
+        tags$li("Membantu dalam proses pengumpulan dan melakukan integrasi data bencana dan iklim yang sudah dikumpulkan"),
         tags$li("Membuat kerangka aplikasi"),
-        tags$li("Membuat dashboard bencana dan provinsi"),
         tags$li("Membuat peta reaktif sebaran bencana dan iklim"),
-        tags$li("Melakukan integrasi data bencana dan iklim yang sudah dikumpulkan"),
-        tags$li("Mengumpulkan data geojson untuk peta reaktif")
+        tags$li("Mendesain layout dan mengembangkan tampilan dan fitur dashboard"),
+        tags$li("Membuat dashboard bencana dan provinsi"),
+        tags$li("Melakukan uji coba dashboard untuk memastikan fungsionalitas dan user experience yang baik")
       )
     ),
     list(
@@ -3024,10 +3025,12 @@ server <- function(input, output,session){
       email = "222313323@stis.ac.id",
       asal = "Kediri, Jawa Timur",
       kontribusi = tags$ol(
+        tags$li("Mengumpulkan dan melakukan proses integrasi data yang digunakan"),
+        tags$li("Melakukan analisis dan interpretasi data"),
+        tags$li("Mendokumentasikan dan  menyusun laporan proposal serta final"),
         tags$li("Membuat beranda dashboard"),
         tags$li("Membuat dashboard data menurut provinsi"),
         tags$li("Mengumpulkan dan membersihkan variabel data iklim"),
-        tags$li("Menyusun laporan akhir projek"),
         tags$li("Membuat video user guide")
       )
     ),
