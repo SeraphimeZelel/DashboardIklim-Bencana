@@ -56,6 +56,12 @@ Aplikasi ini dilengkapi dengan berbagai fitur untuk memfasilitasi analisis data 
 
 ---
 
+## 🎞 Demo Dashboard
+
+[![Demo Dashboard](https://img.youtube.com/vi/C-_xfab68uA/0.jpg)](https://www.youtube.com/watch?v=C-_xfab68uA)
+
+---
+
 ## 🚀 Cara Memakai
 
 [Dashboard dapat diakses secara online](https://asyarimuchtari.shinyapps.io/Dashboard_Climate_Change)
